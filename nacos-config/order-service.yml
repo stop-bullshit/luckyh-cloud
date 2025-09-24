@@ -1,0 +1,51 @@
+# 订单服务配置文件 - order-service.yml
+# 需要在Nacos配置中心创建
+# Data ID: order-service.yml
+# Group: DEFAULT_GROUP
+
+# 服务端口配置
+server:
+  port: 8082
+
+# 业务配置
+order:
+  default-status: 0
+  max-page-size: 100
+  payment-timeout: 30  # 支付超时时间，单位：分钟
+
+# OpenFeign配置
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 10000
+        loggerLevel: basic
+      user-service:
+        connectTimeout: 3000
+        readTimeout: 5000
+        loggerLevel: full
+  compression:
+    request:
+      enabled: true
+      mime-types: text/xml,application/xml,application/json
+      min-request-size: 2048
+    response:
+      enabled: true
+  circuitbreaker:
+    enabled: true
+
+# 线程池配置
+spring.task.execution:
+  pool:
+    core-size: 8
+    max-size: 30
+    queue-capacity: 500
+  thread-name-prefix: order-service-
+
+# 日志配置
+logging:
+  level:
+    com.luckyh.cloud.order: DEBUG
+    com.luckyh.cloud.order.feign: DEBUG
+    feign: DEBUG

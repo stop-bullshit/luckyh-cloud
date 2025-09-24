@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.luckyh.cloud</groupId>
+        <artifactId>luckyh-cloud</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>common</artifactId>
+    <name>common</name>
+    <description>公共模块聚合器 - 管理所有公共子模块</description>
+    <packaging>pom</packaging>
+
+    <!-- 子模块管理 -->
+    <modules>
+        <module>common-core</module>
+        <module>common-db</module>
+        <module>common-redis</module>
+        <module>common-web</module>
+        <module>common-feign</module>
+        <module>common-mq</module>
+    </modules>
+
+    <!-- 
+    说明：
+    - common-core：核心工具模块，最纯净，无特殊依赖
+    - common-db：数据库访问增强模块
+    - common-redis：Redis缓存增强模块  
+    - common-web：Web相关通用组件模块
+    - common-feign：Feign调用增强模块
+    - common-mq：消息队列增强模块(RabbitMQ)
+    -->
+
+</project>

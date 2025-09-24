@@ -1,0 +1,13 @@
+spring:
+  cloud:
+    nacos:
+      server-addr: 192.168.10.210:8848
+      username: nacos
+      password: nacos
+      discovery:
+        server-addr: 192.168.10.210:8848
+        namespace: luckyh-cloud
+        group: DEFAULT_GROUP
+      config:
+        namespace: luckyh-cloud
+        group: DEFAULT_GROUP

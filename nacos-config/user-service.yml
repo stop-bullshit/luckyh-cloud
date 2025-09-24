@@ -1,0 +1,9 @@
+# 用户服务配置
+# Data ID: user-service.yml
+# Group: DEFAULT_GROUP
+
+# 业务配置
+user:
+  default-avatar: "https://example.com/default-avatar.png"
+  max-login-attempts: 5
+  lock-duration: 30  # 账户锁定时间（分钟）

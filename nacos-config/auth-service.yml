@@ -1,0 +1,61 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: auth-service
+  config:
+    import: nacos:${spring.application.name}
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.10.210:8848
+        namespace: luckyh-cloud
+        group: DEFAULT_GROUP
+      config:
+        server-addr: 192.168.10.210:8848
+        namespace: luckyh-cloud
+        group: DEFAULT_GROUP
+        file-extension: yml
+        name: auth-service
+        shared-configs:
+          - data-id: common.yml
+            group: DEFAULT_GROUP
+            refresh: true
+        extension-configs:
+          - data-id: auth-service.yml
+            group: DEFAULT_GROUP
+            refresh: true
+
+# JWT配置
+jwt:
+  secret: luckyh-cloud-secret-key-for-jwt-token-generation-2024
+  expiration: 7200  # 访问令牌过期时间（秒），2小时
+  refresh-expiration: 604800  # 刷新令牌过期时间（秒），7天
+
+# 安全配置
+security:
+  ignored:
+    urls:
+      - /auth/login
+      - /auth/register
+      - /auth/refresh
+      - /v3/api-docs/**
+      - /swagger-ui/**
+      - /swagger-ui.html
+
+# 监控端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+# 日志配置
+logging:
+  level:
+    com.luckyh.cloud.auth: DEBUG
+    org.springframework.security: DEBUG

@@ -1,0 +1,28 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: order-service
+
+  config:
+    import:
+      - optional:classpath:/nacos-common.yml
+      - nacos:db-common.yml?refresh=true
+      - nacos:common.yml?refresh=true
+      - nacos:${spring.application.name}.yml?refresh=true
+
+# 监控端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+# 日志配置
+logging:
+  level:
+    com.luckyh.cloud.order: DEBUG

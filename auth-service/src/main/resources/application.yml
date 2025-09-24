@@ -1,0 +1,29 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: auth-service
+
+  config:
+    import:
+      - optional:classpath:/nacos-common.yml
+      - nacos:db-common.yml?refresh=true
+      - nacos:common.yml?refresh=true
+      - nacos:${spring.application.name}.yml?refresh=true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.luckyh.cloud.auth: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.cloud.bootstrap: DEBUG
+    com.alibaba.nacos: DEBUG

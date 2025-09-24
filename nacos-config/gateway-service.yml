@@ -1,0 +1,58 @@
+# 网关服务配置文件 - gateway-service.yml
+# 需要在Nacos配置中心创建
+# Data ID: gateway-service.yml
+# Group: DEFAULT_GROUP
+
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # 认证服务路由
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=2
+        # 用户服务路由
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=2
+        # 订单服务路由
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/order/**
+          filters:
+            - StripPrefix=2
+      # 全局过滤器配置
+      default-filters:
+        - name: AddRequestHeader
+          args:
+            name: X-Request-Source
+            value: Gateway
+        - name: AddResponseHeader
+          args:
+            name: X-Response-Gateway
+            value: luckyh-cloud-gateway
+
+# 跨域配置
+spring.cloud.gateway.globalcors:
+  cors-configurations:
+    '[/**]':
+      allowedOriginPatterns: "*"
+      allowedMethods: "*"
+      allowedHeaders: "*"
+      allowCredentials: true
+
+# 网关超时配置
+spring.cloud.gateway.httpclient:
+  connect-timeout: 10000
+  response-timeout: 30s

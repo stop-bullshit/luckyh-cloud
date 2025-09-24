@@ -1,0 +1,23 @@
+# 公共配置文件 - common.yml
+# 需要在Nacos配置中心创建
+# Data ID: common.yml
+# Group: DEFAULT_GROUP
+
+
+# 日志配置
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    com.alibaba.nacos: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
+
+# 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always

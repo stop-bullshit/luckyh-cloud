@@ -1,0 +1,11 @@
+# Project exclude paths
+/auth-service/target/
+/common/common-core/target/
+/common/common-feign/target/
+/common/common-mq/target/
+/common/common-redis/target/
+/common/common-web/target/
+/common-service/target/
+/gateway-service/target/
+/order-service/target/
+/user-service/target/
