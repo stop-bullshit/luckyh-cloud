@@ -627,6 +627,12 @@ curl -X POST http://localhost:8080/api/order/orders \
 - ✅ 全局异常处理
 - ✅ 参数校验
 
+### 分布式事务
+- ✅ Seata AT模式分布式事务支持
+- ✅ 全局事务管理
+- ✅ 自动回滚和补偿机制
+- 详见 [Seata集成文档](./SEATA-INTEGRATION.md)
+
 ## 开发指南
 
 ### 添加新的微服务
@@ -668,7 +674,7 @@ curl -X POST http://localhost:8080/api/order/orders \
 
 后续可以考虑添加：
 - Redis缓存
-- 分布式事务 (Seata)
+- ✅ **分布式事务 (Seata)** - 已集成，详见 [SEATA-INTEGRATION.md](./SEATA-INTEGRATION.md)
 - 限流降级 (Sentinel)
 - 链路追踪 (Sleuth + Zipkin)
 - 消息队列 (RocketMQ)

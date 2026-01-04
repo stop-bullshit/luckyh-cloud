@@ -16,6 +16,7 @@ import com.luckyh.cloud.order.feign.UserServiceFeign;
 import com.luckyh.cloud.order.mapper.OrderMapper;
 import com.luckyh.cloud.order.service.OrderService;
 import com.luckyh.cloud.order.vo.OrderVO;
+import io.seata.spring.annotation.GlobalTransactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -45,16 +46,17 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
     }
 
     @Override
+    @GlobalTransactional(name = "order-create-tx", rollbackFor = Exception.class)
     public Long createOrder(OrderDTO orderDTO) {
         // String traceId = TraceUtils.getTraceId();
         // log.info("开始创建订单，traceId: {}", traceId);
-        log.info("开始创建订单");
+        log.info("开始创建订单，启用分布式事务");
 
         // 检查用户是否存在
         Result<OrderVO.UserInfo> userResult = userServiceFeign.getUserById(orderDTO.getUserId());
         if (userResult.getCode() != 200 || userResult.getData() == null) {
             log.warn("用户不存在，无法创建订单，用户ID：{}", orderDTO.getUserId());
-            return null;
+            throw new RuntimeException("用户不存在");
         }
 
         OrderInfo orderInfo = new OrderInfo();
@@ -74,28 +76,28 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
         orderInfo.setUpdateTime(LocalDateTime.now());
 
         boolean saved = save(orderInfo);
-        if (saved) {
-            log.info("订单创建成功，订单ID：{}，订单号：{}", orderInfo.getId(), orderInfo.getOrderNo());
-
-            // 发送订单创建消息 - 暂时注释掉，待实现MQ模块
-            // OrderCreateMessage message = new OrderCreateMessage();
-            // message.setOrderId(orderInfo.getId());
-            // message.setOrderNo(orderInfo.getOrderNo());
-            // message.setUserId(orderInfo.getUserId());
-            // message.setProductName(orderInfo.getProductName());
-            // message.setQuantity(orderInfo.getQuantity());
-            // message.setPrice(orderInfo.getProductPrice());
-            // message.setTotalAmount(orderInfo.getTotalAmount());
-            // message.setTraceId(traceId);
-
-            // messageProducer.sendOrderCreateMessage(message);
-            // log.info("订单创建消息已发送，订单ID：{}, traceId: {}", orderInfo.getId(), traceId);
-
-            return orderInfo.getId();
+        if (!saved) {
+            log.error("订单创建失败");
+            throw new RuntimeException("订单创建失败");
         }
 
-        log.error("订单创建失败");
-        return null;
+        log.info("订单创建成功，订单ID：{}，订单号：{}", orderInfo.getId(), orderInfo.getOrderNo());
+
+        // 发送订单创建消息 - 暂时注释掉，待实现MQ模块
+        // OrderCreateMessage message = new OrderCreateMessage();
+        // message.setOrderId(orderInfo.getId());
+        // message.setOrderNo(orderInfo.getOrderNo());
+        // message.setUserId(orderInfo.getUserId());
+        // message.setProductName(orderInfo.getProductName());
+        // message.setQuantity(orderInfo.getQuantity());
+        // message.setPrice(orderInfo.getProductPrice());
+        // message.setTotalAmount(orderInfo.getTotalAmount());
+        // message.setTraceId(traceId);
+
+        // messageProducer.sendOrderCreateMessage(message);
+        // log.info("订单创建消息已发送，订单ID：{}, traceId: {}", orderInfo.getId(), traceId);
+
+        return orderInfo.getId();
     }
 
     @Override
@@ -131,6 +133,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
     }
 
     @Override
+    @GlobalTransactional(name = "order-pay-tx", rollbackFor = Exception.class)
     public boolean payOrder(Long id) {
         OrderInfo orderInfo = getById(id);
         if (orderInfo == null) {
@@ -151,12 +154,14 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
             log.info("订单支付成功，订单ID：{}", id);
         } else {
             log.error("订单支付失败，订单ID：{}", id);
+            throw new RuntimeException("订单支付失败");
         }
 
         return updated;
     }
 
     @Override
+    @GlobalTransactional(name = "order-cancel-tx", rollbackFor = Exception.class)
     public boolean cancelOrder(Long id) {
         OrderInfo orderInfo = getById(id);
         if (orderInfo == null) {
@@ -177,6 +182,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
             log.info("订单取消成功，订单ID：{}", id);
         } else {
             log.error("订单取消失败，订单ID：{}", id);
+            throw new RuntimeException("订单取消失败");
         }
 
         return updated;

@@ -50,6 +50,8 @@
         <spring-boot-starter-amqp.version>3.4.0</spring-boot-starter-amqp.version>
         <!-- Swagger -->
         <springdoc.version>2.6.0</springdoc.version>
+        <!-- Seata -->
+        <seata.version>2.0.0</seata.version>
     </properties>
 
     <dependencyManagement>
@@ -155,6 +157,13 @@
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
                 <version>${springdoc.version}</version>
+            </dependency>
+
+            <!-- Seata -->
+            <dependency>
+                <groupId>io.seata</groupId>
+                <artifactId>seata-spring-boot-starter</artifactId>
+                <version>${seata.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
