@@ -1,6 +1,7 @@
 # Project exclude paths
 /auth-service/target/
 /common/common-core/target/
+/common/common-db/target/
 /common/common-feign/target/
 /common/common-mq/target/
 /common/common-redis/target/
