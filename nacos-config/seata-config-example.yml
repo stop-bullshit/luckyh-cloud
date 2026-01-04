@@ -1,0 +1,75 @@
+# Seata 配置示例
+# 此配置应添加到 Nacos 配置中心，覆盖默认的 localhost 配置
+# 用于不同环境（开发/测试/生产）
+
+# ============================================
+# 开发环境配置示例
+# Data ID: seata-dev.yml
+# Group: SEATA_GROUP
+# ============================================
+
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: default_tx_group
+  service:
+    vgroup-mapping:
+      default_tx_group: default
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: 127.0.0.1:8848  # 开发环境 Nacos 地址
+      namespace: ""
+      group: SEATA_GROUP
+      username: nacos
+      password: nacos
+  config:
+    type: nacos
+    nacos:
+      server-addr: 127.0.0.1:8848  # 开发环境 Nacos 地址
+      namespace: ""
+      group: SEATA_GROUP
+      data-id: seataServer.properties
+      username: nacos
+      password: nacos
+
+# ============================================
+# 生产环境配置示例
+# Data ID: seata-prod.yml
+# Group: SEATA_GROUP
+# ============================================
+
+# seata:
+#   enabled: true
+#   application-id: ${spring.application.name}
+#   tx-service-group: default_tx_group
+#   service:
+#     vgroup-mapping:
+#       default_tx_group: default
+#   registry:
+#     type: nacos
+#     nacos:
+#       application: seata-server
+#       server-addr: 192.168.10.210:8848  # 生产环境 Nacos 地址
+#       namespace: "prod"
+#       group: SEATA_GROUP
+#       username: nacos
+#       password: nacos
+#   config:
+#     type: nacos
+#     nacos:
+#       server-addr: 192.168.10.210:8848  # 生产环境 Nacos 地址
+#       namespace: "prod"
+#       group: SEATA_GROUP
+#       data-id: seataServer.properties
+#       username: nacos
+#       password: nacos
+
+# ============================================
+# 使用说明
+# ============================================
+# 1. 在 Nacos 配置中心创建对应环境的配置文件
+# 2. 根据实际部署环境修改 server-addr
+# 3. 根据需要修改 namespace 和 group
+# 4. 服务启动时会自动加载 Nacos 配置，覆盖 application.yml 中的默认配置
