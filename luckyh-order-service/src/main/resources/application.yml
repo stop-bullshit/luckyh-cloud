@@ -12,6 +12,21 @@ spring:
       - nacos:${spring.application.name}.yml?refresh=true
 
   cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+      client:
+        config:
+          default:
+            connectTimeout: 2000
+            readTimeout: 5000
+    circuitbreaker:
+      resilience4j:
+        # 保持Seata的ThreadLocal XID，使用Feign的HTTP超时。
+        disable-thread-pool: true
+      bulkhead:
+        resilience4j:
+          enabled: false
     nacos:
       config:
         server-addr: ${NACOS_SERVER_ADDR:192.168.10.201:8848}

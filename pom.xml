@@ -17,6 +17,8 @@
         <module>luckyh-user-service</module>
         <module>luckyh-order-service</module>
         <module>luckyh-auth-service</module>
+        <module>luckyh-inventory-service</module>
+        <module>luckyh-account-service</module>
     </modules>
 
     <properties>

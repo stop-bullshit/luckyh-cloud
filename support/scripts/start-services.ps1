@@ -11,6 +11,8 @@ $logDir = Join-Path $localDir 'logs'
 $services = @(
     [pscustomobject]@{ Name = 'luckyh-auth-service'; Port = 8083 }
     [pscustomobject]@{ Name = 'luckyh-user-service'; Port = 8081 }
+    [pscustomobject]@{ Name = 'luckyh-inventory-service'; Port = 8084 }
+    [pscustomobject]@{ Name = 'luckyh-account-service'; Port = 8085 }
     [pscustomobject]@{ Name = 'luckyh-order-service'; Port = 8082 }
     [pscustomobject]@{ Name = 'luckyh-gateway-service'; Port = 8080 }
 )
@@ -188,7 +190,7 @@ try {
         }
         Write-Host "$($service.Name) 已就绪：http://127.0.0.1:$($service.Port)/actuator/health"
     }
-    Write-Host "四个服务均已就绪。日志与 PID：$localDir"
+    Write-Host "六个服务均已就绪。日志与 PID：$localDir"
 } catch {
     $failure = $_
     foreach ($record in $started) {

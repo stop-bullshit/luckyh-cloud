@@ -4,13 +4,22 @@
 # Group: DEFAULT_GROUP
 
 
-# 日志配置
+# 逻辑变动: 恢复SpringBoot默认日志输出-20261002-1605-02
+# 保留 Spring Boot 默认日志格式，并在控制台中启用默认级别颜色。
+spring:
+  output:
+    ansi:
+      enabled: always
+
+# 逻辑变动: 保留SQL并关闭结果明细日志-20261002-1625-01
+# Mapper 使用 DEBUG 输出 SQL、参数和结果数量；结果字段及逐行数据只在 TRACE 输出。
 logging:
   level:
-    org.springframework.cloud.gateway: INFO
-    com.alibaba.nacos: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
+    com.luckyh.cloud.auth.mapper: DEBUG
+    com.luckyh.cloud.user.mapper: DEBUG
+    com.luckyh.cloud.inventory.mapper: DEBUG
+    com.luckyh.cloud.account.mapper: DEBUG
+    com.luckyh.cloud.order.mapper: DEBUG
 
 # 监控配置
 management:

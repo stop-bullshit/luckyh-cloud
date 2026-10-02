@@ -1,0 +1,9 @@
+# Data ID: inventory-service.yml
+# Namespace: luckyh-cloud
+# Group: DEFAULT_GROUP
+
+# 只声明服务拥有的数据库；地址、端口、账号、密码和连接参数继承 db-common.yml。
+luckyh:
+  datasource:
+    database: luckyh_inventory
+

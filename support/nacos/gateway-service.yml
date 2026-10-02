@@ -28,8 +28,22 @@ spring:
         # 订单服务路由
         - id: order-service
           uri: lb://order-service
+          metadata:
+            response-timeout: 60000
           predicates:
             - Path=/api/order/**
+          filters:
+            - StripPrefix=2
+        - id: inventory-service
+          uri: lb://inventory-service
+          predicates:
+            - Path=/api/inventory/**
+          filters:
+            - StripPrefix=2
+        - id: account-service
+          uri: lb://account-service
+          predicates:
+            - Path=/api/account/**
           filters:
             - StripPrefix=2
       # 全局过滤器配置

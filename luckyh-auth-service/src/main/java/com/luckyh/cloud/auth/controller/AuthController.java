@@ -3,9 +3,13 @@ package com.luckyh.cloud.auth.controller;
 import com.luckyh.cloud.common.core.domain.Result;
 import com.luckyh.cloud.common.core.domain.R;
 import com.luckyh.cloud.auth.dto.LoginDTO;
+import com.luckyh.cloud.auth.dto.ManagedUserDTO;
 import com.luckyh.cloud.auth.dto.RegisterDTO;
 import com.luckyh.cloud.auth.service.AuthService;
 import com.luckyh.cloud.auth.vo.LoginVO;
+import com.luckyh.cloud.auth.vo.ManagedUserVO;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
@@ -98,6 +102,55 @@ public class AuthController {
             log.error("令牌验证失败", e);
             return Result.unauthorized(e.getMessage());
         }
+    }
+
+    /** 查询真实登录用户。 */
+    @GetMapping("/users")
+    public Result<IPage<ManagedUserVO>> getUsers(
+            @RequestParam(defaultValue = "1") long current,
+            @RequestParam(defaultValue = "10") long size,
+            @RequestParam(required = false) String username) {
+        // 逻辑变动: 用户管理接入认证用户-20261002-1710-01
+        return Result.success(authService.getUserPage(current, size, username));
+    }
+
+    /** 批量查询登录用户，供订单分页一次关联。 */
+    @GetMapping("/users/batch")
+    public Result<List<ManagedUserVO>> getUsersByIds(@RequestParam List<Long> ids) {
+        return Result.success(authService.getUsersByIds(ids));
+    }
+
+    /** 查询登录用户详情。 */
+    @GetMapping("/users/{id}")
+    public Result<ManagedUserVO> getUser(@PathVariable Long id) {
+        ManagedUserVO user = authService.getUser(id);
+        return user == null ? Result.error("用户不存在") : Result.success(user);
+    }
+
+    /** 新建登录用户。 */
+    @PostMapping("/users")
+    public Result<Long> createUser(@RequestBody @Validated ManagedUserDTO userDTO) {
+        return Result.success(authService.createUser(userDTO));
+    }
+
+    /** 修改登录用户。 */
+    @PutMapping("/users/{id}")
+    public Result<String> updateUser(@PathVariable Long id,
+                                     @RequestBody @Validated ManagedUserDTO userDTO) {
+        return authService.updateUser(id, userDTO)
+                ? Result.success("用户更新成功") : Result.error("用户不存在");
+    }
+
+    /** 删除登录用户，禁止删除当前登录账户。 */
+    @DeleteMapping("/users/{id}")
+    public Result<String> deleteUser(@PathVariable Long id,
+                                     @RequestHeader("Authorization") String authHeader) {
+        LoginVO.UserInfo currentUser = authService.validateToken(authHeader.replace("Bearer ", ""));
+        if (id.equals(currentUser.getId())) {
+            return Result.error("不能删除当前登录账户");
+        }
+        return authService.deleteUser(id)
+                ? Result.success("用户删除成功") : Result.error("用户不存在");
     }
 
     /**

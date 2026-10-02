@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="InterfaceXNavigator">
+    <option name="interfaceItemConfigEntities">
+      <list>
+        <InterfaceItemConfigEntity>
+          <option name="enabled" value="true" />
+          <option name="itemCategory" value="HTTP" />
+        </InterfaceItemConfigEntity>
+        <InterfaceItemConfigEntity>
+          <option name="enabled" value="true" />
+          <option name="itemCategory" value="RabbitMQListener" />
+        </InterfaceItemConfigEntity>
+        <InterfaceItemConfigEntity>
+          <option name="enabled" value="true" />
+          <option name="itemCategory" value="RabbitMQProducer" />
+        </InterfaceItemConfigEntity>
+        <InterfaceItemConfigEntity>
+          <option name="enabled" value="true" />
+          <option name="itemCategory" value="OpenFeign" />
+        </InterfaceItemConfigEntity>
+        <InterfaceItemConfigEntity>
+          <option name="enabled" value="true" />
+          <option name="itemCategory" value="RabbitMQTemplate" />
+        </InterfaceItemConfigEntity>
+      </list>
+    </option>
+  </component>
+</project>

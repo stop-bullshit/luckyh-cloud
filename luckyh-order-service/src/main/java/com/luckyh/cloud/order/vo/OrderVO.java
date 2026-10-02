@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 订单VO
@@ -32,6 +33,11 @@ public class OrderVO {
     private UserInfo userInfo;
 
     /**
+     * 商品ID
+     */
+    private Long productId;
+
+    /**
      * 商品名称
      */
     private String productName;
@@ -52,7 +58,7 @@ public class OrderVO {
     private BigDecimal totalAmount;
 
     /**
-     * 订单状态：0-待支付，1-已支付，2-已取消
+     * 订单状态：0-待支付，1-已支付，2-已取消，3-已退款
      */
     private Integer status;
 
@@ -60,6 +66,18 @@ public class OrderVO {
      * 订单状态描述
      */
     private String statusDesc;
+
+    /** 支付时间。 */
+    private LocalDateTime payTime;
+
+    /** 取消时间。 */
+    private LocalDateTime cancelTime;
+
+    /** 退款时间。 */
+    private LocalDateTime refundTime;
+
+    /** 订单状态操作流水。 */
+    private List<OrderOperation> operationLogs;
 
     /**
      * 创建时间
@@ -81,5 +99,20 @@ public class OrderVO {
         private String realName;
         private String email;
         private String phone;
+    }
+
+    /** 订单操作流水。 */
+    @Data
+    public static class OrderOperation {
+        /** 操作类型。 */
+        private String operationType;
+        /** 操作前状态。 */
+        private Integer fromStatus;
+        /** 操作后状态。 */
+        private Integer toStatus;
+        /** 全局事务 ID。 */
+        private String xid;
+        /** 操作时间。 */
+        private LocalDateTime createTime;
     }
 }

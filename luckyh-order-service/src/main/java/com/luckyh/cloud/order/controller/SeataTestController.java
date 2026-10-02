@@ -1,13 +1,15 @@
 package com.luckyh.cloud.order.controller;
 
 import com.luckyh.cloud.common.core.domain.Result;
-import com.luckyh.cloud.order.dto.OrderDTO;
+import com.luckyh.cloud.order.dto.PurchaseDTO;
+import com.luckyh.cloud.order.exception.PurchaseRollbackException;
 import com.luckyh.cloud.order.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 /**
  * Seata分布式事务演示控制器
@@ -28,39 +30,31 @@ public class SeataTestController {
      */
     @PostMapping("/test-commit")
     @Operation(summary = "测试事务提交", description = "创建订单，所有操作成功，事务正常提交")
-    public Result<Long> testCommit(@RequestBody OrderDTO orderDTO) {
-        log.info("===== Seata分布式事务测试：正常提交场景 =====");
-        try {
-            Long orderId = orderService.createOrder(orderDTO);
-            log.info("订单创建成功，订单ID: {}", orderId);
-            return Result.success("事务提交成功", orderId);
-        } catch (Exception e) {
-            log.error("订单创建失败", e);
-            return Result.error(500, "事务执行失败: " + e.getMessage());
-        }
+    public Result<Long> testCommit(@Valid @RequestBody PurchaseDTO purchaseDTO) {
+        return Result.success("订单、库存、账户事务提交成功", orderService.purchase(purchaseDTO));
     }
 
     /**
      * 测试回滚场景
-     * 使用不存在的用户ID创建订单，验证事务回滚
+     * 完成订单、库存和账户写入后主动失败，验证三个数据库回滚
      */
     @PostMapping("/test-rollback")
-    @Operation(summary = "测试事务回滚", description = "使用不存在的用户ID，验证事务回滚")
-    public Result<String> testRollback() {
-        log.info("===== Seata分布式事务测试：回滚场景 =====");
-        
-        OrderDTO orderDTO = new OrderDTO();
-        orderDTO.setUserId(999999L); // 使用不存在的用户ID
-        orderDTO.setProductName("测试商品-回滚场景");
-        orderDTO.setProductPrice(new java.math.BigDecimal("99.99"));
-        orderDTO.setQuantity(1);
-        
+    @Operation(summary = "测试事务回滚", description = "三个服务写入后主动抛错，验证全局回滚")
+    public Result<String> testRollback(@Valid @RequestBody PurchaseDTO purchaseDTO) {
         try {
-            orderService.createOrder(orderDTO);
+            orderService.purchaseWithRollback(purchaseDTO);
             return Result.error(500, "预期应该失败，但却成功了");
-        } catch (Exception e) {
-            log.info("事务已回滚，异常信息: {}", e.getMessage());
-            return Result.success("事务回滚测试成功，异常信息: " + e.getMessage(), null);
+        } catch (RuntimeException e) {
+            Throwable cause = e;
+            // Seata 2.0 的调用适配器会包装业务异常，只识别它直接包装的演示异常。
+            if (e.getClass() == RuntimeException.class && "try to proceed invocation error".equals(e.getMessage())) {
+                cause = e.getCause();
+            }
+            if (!(cause instanceof PurchaseRollbackException expected)) {
+                throw e;
+            }
+            log.info("已触发三个购买分支回滚：{}", expected.getMessage());
+            return Result.success("已触发全局回滚，请核对订单、库存、余额与协调器状态", expected.getMessage());
         }
     }
 
@@ -74,8 +68,10 @@ public class SeataTestController {
         info.setEnabled(true);
         info.setMode("AT");
         info.setVersion("2.0.0");
-        info.setDescription("已集成Seata分布式事务框架，支持AT模式自动补偿");
+        info.setDescription("购买流程在订单、库存、账户三个独立数据库执行AT分支，信息页不代替运行验证");
         info.setTransactionMethods(new String[]{
+            "OrderService.purchase() - 订单、库存、账户提交",
+            "OrderService.purchaseWithRollback() - 三个写入分支完成后回滚",
             "OrderService.createOrder() - 创建订单事务",
             "OrderService.payOrder() - 支付订单事务",
             "OrderService.cancelOrder() - 取消订单事务"

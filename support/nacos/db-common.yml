@@ -3,13 +3,22 @@
 # Data ID: db-common.yml
 # Group: DEFAULT_GROUP
 
-# 数据库配置
+# 逻辑变动: 数据库连接参数统一由Nacos公共配置维护-20261002-1740-01
+# 数据库公共连接参数；各服务只通过 luckyh.datasource.database 选择自己的库。
+luckyh:
+  datasource:
+    host: '${DB_HOST:192.168.10.209}'
+    port: '${DB_PORT:3306}'
+    username: '${DB_USERNAME:root}'
+    password: '${DB_PASSWORD:admin123+.0}'
+    parameters: 'useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true'
+
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://192.168.10.13:3380/luckyh_cloud?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: '${DB_PASSWORD:admin123+.0}'
+    url: 'jdbc:mysql://${luckyh.datasource.host}:${luckyh.datasource.port}/${luckyh.datasource.database:luckyh_cloud}?${luckyh.datasource.parameters}'
+    username: '${luckyh.datasource.username}'
+    password: '${luckyh.datasource.password}'
   data:
     redis:
       host: 192.168.10.13
@@ -19,4 +28,3 @@ spring:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

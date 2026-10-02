@@ -28,20 +28,40 @@ CREATE TABLE `order_info` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '订单ID',
   `order_no` varchar(50) NOT NULL COMMENT '订单号',
   `user_id` bigint NOT NULL COMMENT '用户ID',
+  `product_id` bigint DEFAULT NULL COMMENT '商品ID',
   `product_name` varchar(200) NOT NULL COMMENT '商品名称',
   `product_price` decimal(10,2) NOT NULL COMMENT '商品价格',
   `quantity` int NOT NULL COMMENT '购买数量',
   `total_amount` decimal(10,2) NOT NULL COMMENT '订单总金额',
-  `status` tinyint NOT NULL DEFAULT '0' COMMENT '订单状态：0-待支付，1-已支付，2-已取消',
+  `status` tinyint NOT NULL DEFAULT '0' COMMENT '订单状态：0-待支付，1-已支付，2-已取消，3-已退款',
+  `pay_time` datetime DEFAULT NULL COMMENT '支付时间',
+  `cancel_time` datetime DEFAULT NULL COMMENT '取消时间',
+  `refund_time` datetime DEFAULT NULL COMMENT '退款时间',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除：0-未删除，1-已删除',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_order_no` (`order_no`),
   KEY `idx_user_id` (`user_id`),
+  KEY `idx_product_id` (`product_id`),
   KEY `idx_status` (`status`),
   KEY `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单表';
+
+CREATE TABLE `order_operation_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '流水ID',
+  `order_id` bigint NOT NULL COMMENT '订单ID',
+  `order_no` varchar(50) NOT NULL COMMENT '订单号',
+  `operation_type` varchar(20) NOT NULL COMMENT '操作类型',
+  `from_status` tinyint DEFAULT NULL COMMENT '操作前状态',
+  `to_status` tinyint NOT NULL COMMENT '操作后状态',
+  `xid` varchar(128) DEFAULT NULL COMMENT 'Seata全局事务ID',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_order_id` (`order_id`),
+  KEY `idx_order_no` (`order_no`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单操作流水';
 
 CREATE TABLE `sys_user` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '用户ID',

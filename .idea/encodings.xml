@@ -13,6 +13,8 @@
     <file url="file://$PROJECT_DIR$/common/common-web/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/common/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/common/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/luckyh-account-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/luckyh-account-service/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/luckyh-auth-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/luckyh-auth-service/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/luckyh-common/luckyh-common-core/src/main/java" charset="UTF-8" />
@@ -27,6 +29,8 @@
     <file url="file://$PROJECT_DIR$/luckyh-common/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/luckyh-gateway-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/luckyh-gateway-service/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/luckyh-inventory-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/luckyh-inventory-service/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/luckyh-order-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/luckyh-order-service/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/luckyh-user-service/src/main/java" charset="UTF-8" />

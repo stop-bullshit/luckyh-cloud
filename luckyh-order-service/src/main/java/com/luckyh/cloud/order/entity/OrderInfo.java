@@ -37,6 +37,11 @@ public class OrderInfo implements Serializable {
     private Long userId;
 
     /**
+     * 商品ID
+     */
+    private Long productId;
+
+    /**
      * 商品名称
      */
     private String productName;
@@ -57,9 +62,18 @@ public class OrderInfo implements Serializable {
     private BigDecimal totalAmount;
 
     /**
-     * 订单状态：0-待支付，1-已支付，2-已取消
+     * 订单状态：0-待支付，1-已支付，2-已取消，3-已退款
      */
     private Integer status;
+
+    /** 支付时间。 */
+    private LocalDateTime payTime;
+
+    /** 取消时间。 */
+    private LocalDateTime cancelTime;
+
+    /** 退款时间。 */
+    private LocalDateTime refundTime;
 
     /**
      * 创建时间

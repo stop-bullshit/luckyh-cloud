@@ -8,17 +8,19 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="luckyh-auth-service" />
         <module name="luckyh-order-service" />
         <module name="luckyh-common-redis" />
         <module name="luckyh-user-service" />
         <module name="luckyh-common-core" />
         <module name="luckyh-common-web" />
         <module name="common-mq" />
-        <module name="common-web" />
         <module name="luckyh-common-mq" />
         <module name="luckyh-gateway-service" />
+        <module name="luckyh-account-service" />
         <module name="common-redis" />
+        <module name="luckyh-auth-service" />
+        <module name="common-web" />
+        <module name="luckyh-inventory-service" />
         <module name="common-core" />
       </profile>
     </annotationProcessing>
@@ -41,6 +43,7 @@
       <module name="common-mq" options="-parameters" />
       <module name="common-redis" options="-parameters" />
       <module name="common-web" options="-parameters" />
+      <module name="luckyh-account-service" options="-parameters" />
       <module name="luckyh-auth-service" options="-parameters" />
       <module name="luckyh-cloud" options="-parameters" />
       <module name="luckyh-common" options="-parameters" />
@@ -49,6 +52,7 @@
       <module name="luckyh-common-redis" options="-parameters" />
       <module name="luckyh-common-web" options="-parameters" />
       <module name="luckyh-gateway-service" options="-parameters" />
+      <module name="luckyh-inventory-service" options="-parameters" />
       <module name="luckyh-order-service" options="-parameters" />
       <module name="luckyh-user-service" options="-parameters" />
     </option>

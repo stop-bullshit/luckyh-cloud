@@ -24,6 +24,9 @@ data:
         username: seata
         password: ${SEATA_CONSOLE_PASSWORD}
     seata:
+      transport:
+        # 演示环境与四个客户端同步关闭固定读空闲检测，RPC 超时继续生效。
+        heartbeat: false
       config:
         type: file
       registry:
@@ -36,7 +39,7 @@ data:
           datasource: druid
           db-type: mysql
           driver-class-name: com.mysql.cj.jdbc.Driver
-          url: jdbc:mysql://192.168.10.13:3380/seata?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
+          url: jdbc:mysql://192.168.10.209:3306/seata?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
           user: ${DB_USERNAME}
           password: ${DB_PASSWORD}
           min-conn: 1

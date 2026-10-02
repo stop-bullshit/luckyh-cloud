@@ -6,7 +6,7 @@
 | --- | --- |
 | [seata.yml](seata.yml) | Namespace、ConfigMap、单副本 Deployment、事务 Service、控制台 Service 和 Ingress |
 | [../sql/02-seata.sql](../sql/02-seata.sql) | 独立 `seata` 数据库及四张事务表 |
-| [../nacos/seataServer.properties](../nacos/seataServer.properties) | Nacos 下发给用户、订单服务的事务组和协调器地址 |
+| [../nacos/seataServer.properties](../nacos/seataServer.properties) | Nacos 下发给用户、库存、账户、订单服务的事务组和协调器地址 |
 
 以下 Kubernetes 命令用于手工部署，需在已安装 `kubectl`、连接到目标集群的终端执行；应用清单的命令从仓库根目录执行。使用服务器上的 `kubectl` 时，可通过 `ssh k8s-master` 登录，并先把清单复制到对应执行目录。
 
@@ -20,10 +20,10 @@
 | 事务入口 | `192.168.10.203:8091` | LoadBalancer 地址、容器 `SEATA_IP`、Nacos `service.default.grouplist` 三处同步调整 |
 | 控制台 | [http://seata.home/](http://seata.home/) | nginx Ingress 域名，后端 `seata-console:7091` |
 | 控制台 DNS / hosts | `seata.home` → `192.168.10.200` | 与现有 `nacos.home` 使用相同 Ingress 入口 |
-| 事务数据库 | `192.168.10.13:3380/seata` | ConfigMap 中 JDBC 地址，账号须能读写 Seata 表 |
+| 事务数据库 | `192.168.10.209:3306/seata` | ConfigMap 中 JDBC 地址，账号须能读写 Seata 表 |
 | 资源请求 / 上限 | `100m / 500m` CPU、`256Mi / 768Mi` 内存 | JVM 堆为 `128m / 256m`，按节点余量调整 |
 
-协调器使用 `registry.type=file`、`config.type=file`，服务端配置来自 ConfigMap。用户、订单服务使用 `registry.type=file`、`config.type=nacos`，读取 Nacos 的固定协调器地址。协调器自身不会出现在 Nacos 服务列表；四个业务服务继续通过 Nacos 注册和发现。
+协调器使用 `registry.type=file`、`config.type=file`，服务端配置来自 ConfigMap。用户、库存、账户、订单服务使用 `registry.type=file`、`config.type=nacos`，读取 Nacos 的固定协调器地址。协调器自身不会出现在 Nacos 服务列表；六个应用继续通过 Nacos 注册和发现。
 
 Seata 2.0.0 镜像内置的旧 Nacos 客户端使用当前 Nacos 3 已移除的旧注册 HTTP API，此前验证返回 501，因此这里采用固定协调器地址。
 
@@ -33,7 +33,7 @@ Seata 2.0.0 镜像内置的旧 Nacos 客户端使用当前 Nacos 3 已移除的�
 
 按照 [数据库初始化说明](../sql/README.md) 执行 [02-seata.sql](../sql/02-seata.sql)。它创建独立的 `seata` 库、四张服务端表和默认锁记录，可再次执行而不覆盖现有数据。
 
-业务库另由 `support/sql/01-business.sql` 首次初始化，包含用户、订单服务需要的 `undo_log`。已有业务库不要重新初始化。
+`luckyh_cloud` 由 `support/sql/01-business.sql` 首次初始化，包含订单写入需要的 `undo_log`。已有业务库不要重新初始化。购买演示另执行 [03-distributed-demo.sql](../sql/03-distributed-demo.sql) 补齐 `luckyh_inventory`、`luckyh_account`，两个库各有自己的 `undo_log`；03 不重置已有余额或库存。
 
 ### 2. 首次创建 Secret
 
@@ -114,7 +114,7 @@ service.vgroupMapping.default_tx_group=default
 service.default.grouplist=192.168.10.203:8091
 ```
 
-完成六份业务配置和 Seata 配置后，按 [本地开发说明](../docs/development.md) 启动应用。Nacos 分组和地址说明见 [Nacos 配置](../nacos/README.md)。
+完成八份业务 YAML 和一份 public Seata 配置后，按 [本地开发说明](../docs/development.md) 启动六个应用。Nacos 分组和地址说明见 [Nacos 配置](../nacos/README.md)。
 
 ## 控制台登录
 
@@ -141,10 +141,21 @@ kubectl -n seata rollout status deployment/seata-server --timeout=180s
 
 Secret 通过环境变量注入，凭据调整后也需要重启。当前采用单副本和 `Recreate` 策略，重启期间协调器短暂不可用，应避开订单写入操作。
 
+### 当前 demo 的长回滚兼容配置
+
+TC 使用 file provider，清单设置 `seata.transport.heartbeat=false`，用于当前 Seata 2.0.0 环境的长回滚兼容。用户、库存、账户、订单四个客户端使用 Nacos provider，传输参数由 public / `SEATA_GROUP` / `seataServer.properties` 提供：`transport.heartbeat=false`、`transport.rpcTmRequestTimeout=30000`、`transport.rpcRmRequestTimeout=15000`，不带 `seata.` 前缀，后两项单位毫秒；本地 Spring YAML 心跳项已删除。
+
+TC 清单更新后按上面的步骤重启并等待 rollout；四个客户端在 public 配置发布后也必须全部重启。用 JVM attach 或等效方式核对实际心跳为 `false`、读 / 写空闲 `0 / 0` 和客户端 RPC 超时。只看 Nacos 配置、依赖刷新或只改单端不能确认这些静态值已生效。
+
+TM 30 秒、RM 15 秒的有限 RPC 等待仍保留。网关仅将订单路由响应等待改为 `60000` 毫秒，其他路由仍为 `30s`；RPC 与协调器重试不能保证总时长不超过 60 秒。修复网络 / 存储延迟后，TC YAML 的 `seata.transport.heartbeat` 与客户端 public 配置的 `transport.heartbeat` 同步恢复为 `true`，全部重启，再验证五个场景。原因及依据见 [事务指南](../docs/distributed-transactions.md#当前-demo-的长回滚兼容处理)。
+
+2026-10-02 14:38–14:40 的五个真实场景已完成三库数据核对。TC Ready，TC 与四个客户端的 JVM 心跳 / 读空闲 / 写空闲均已核对为 `false / 0 / 0`，客户端 TM / RM RPC 为 `30000ms / 15000ms`；账户恢复后也重新核对了这些参数。约 14:41 六应用健康均 `UP`、Nacos 六服务健康注册均通过。关闭心跳仍限于当前 demo 的兼容处理，详情见 [实测记录](../docs/distributed-transactions.md#8-本次实测记录)。
+
 ## 初始化后检查
 
 1. Deployment 就绪；Pod 日志没有数据库认证或表不存在错误。
 2. 控制台域名能访问并登录；事务入口 `192.168.10.203:8091` 从应用机器可达。
-3. 用户、订单服务能读取 public / `SEATA_GROUP` 配置，创建、支付订单时 Seata 事务正常提交。
+3. 用户、库存、账户、订单服务能读取 public / `SEATA_GROUP` 配置，TM/RM 能连接协调器。
+4. 按 [跨服务事务测试](../docs/distributed-transactions.md) 验证三库购买提交和全写后回滚，同时核对订单、库存、余额及协调器最终状态；控制台可登录或服务健康不等于事务已验证。
 
 更多问题见 [故障排查](../docs/troubleshooting.md)。

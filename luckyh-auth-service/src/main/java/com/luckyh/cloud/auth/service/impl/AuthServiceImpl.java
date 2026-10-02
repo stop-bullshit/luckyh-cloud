@@ -3,7 +3,10 @@ package com.luckyh.cloud.auth.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.luckyh.cloud.auth.dto.LoginDTO;
+import com.luckyh.cloud.auth.dto.ManagedUserDTO;
 import com.luckyh.cloud.auth.dto.RegisterDTO;
 import com.luckyh.cloud.auth.entity.SysUser;
 import com.luckyh.cloud.auth.entity.SysUserRole;
@@ -13,6 +16,7 @@ import com.luckyh.cloud.auth.service.AuthService;
 import com.luckyh.cloud.auth.util.JwtUtils;
 import com.luckyh.cloud.common.redis.RedisUtils;
 import com.luckyh.cloud.auth.vo.LoginVO;
+import com.luckyh.cloud.auth.vo.ManagedUserVO;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -175,6 +179,102 @@ public class AuthServiceImpl implements AuthService {
         LoginVO.UserInfo userInfo = new LoginVO.UserInfo();
         BeanUtil.copyProperties(sysUser, userInfo);
         return userInfo;
+    }
+
+    @Override
+    public IPage<ManagedUserVO> getUserPage(long current, long size, String username) {
+        LambdaQueryWrapper<SysUser> query = new LambdaQueryWrapper<SysUser>()
+                .like(StrUtil.isNotBlank(username), SysUser::getUsername, username)
+                .orderByDesc(SysUser::getId);
+        return sysUserMapper.selectPage(new Page<>(current, size), query)
+                .convert(user -> BeanUtil.copyProperties(user, ManagedUserVO.class));
+    }
+
+    @Override
+    public ManagedUserVO getUser(Long id) {
+        SysUser user = sysUserMapper.selectById(id);
+        return user == null ? null : BeanUtil.copyProperties(user, ManagedUserVO.class);
+    }
+
+    @Override
+    public List<ManagedUserVO> getUsersByIds(List<Long> ids) {
+        // 逻辑变动: 订单分页批量关联登录用户-20261002-1735-01
+        return sysUserMapper.selectBatchIds(ids).stream()
+                .map(user -> BeanUtil.copyProperties(user, ManagedUserVO.class))
+                .toList();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long createUser(ManagedUserDTO userDTO) {
+        if (StrUtil.isBlank(userDTO.getPassword())) {
+            throw new IllegalArgumentException("新建用户时密码不能为空");
+        }
+        checkUniqueUser(userDTO, null);
+        SysUser user = new SysUser();
+        BeanUtil.copyProperties(userDTO, user, "password");
+        user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+        user.setCreateTime(LocalDateTime.now());
+        user.setUpdateTime(LocalDateTime.now());
+        sysUserMapper.insert(user);
+
+        SysUserRole userRole = new SysUserRole();
+        userRole.setUserId(user.getId());
+        userRole.setRoleId(user.getUserType() == 1 ? 1L : 2L);
+        sysUserRoleMapper.insert(userRole);
+        return user.getId();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateUser(Long id, ManagedUserDTO userDTO) {
+        SysUser user = sysUserMapper.selectById(id);
+        if (user == null) {
+            return false;
+        }
+        boolean userTypeChanged = !user.getUserType().equals(userDTO.getUserType());
+        checkUniqueUser(userDTO, id);
+        BeanUtil.copyProperties(userDTO, user, "password");
+        if (StrUtil.isNotBlank(userDTO.getPassword())) {
+            user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+        }
+        user.setUpdateTime(LocalDateTime.now());
+        if (sysUserMapper.updateById(user) != 1) {
+            return false;
+        }
+        if (userTypeChanged) {
+            sysUserRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, id));
+            SysUserRole userRole = new SysUserRole();
+            userRole.setUserId(id);
+            userRole.setRoleId(user.getUserType() == 1 ? 1L : 2L);
+            sysUserRoleMapper.insert(userRole);
+        }
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteUser(Long id) {
+        sysUserRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, id));
+        return sysUserMapper.deleteById(id) == 1;
+    }
+
+    private void checkUniqueUser(ManagedUserDTO userDTO, Long excludedId) {
+        LambdaQueryWrapper<SysUser> usernameQuery = new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getUsername, userDTO.getUsername())
+                .ne(excludedId != null, SysUser::getId, excludedId);
+        if (sysUserMapper.selectCount(usernameQuery) > 0) {
+            throw new IllegalArgumentException("用户名已存在");
+        }
+        if (StrUtil.isBlank(userDTO.getEmail())) {
+            return;
+        }
+        LambdaQueryWrapper<SysUser> emailQuery = new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getEmail, userDTO.getEmail())
+                .ne(excludedId != null, SysUser::getId, excludedId);
+        if (sysUserMapper.selectCount(emailQuery) > 0) {
+            throw new IllegalArgumentException("邮箱已被注册");
+        }
     }
 
     /**

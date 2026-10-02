@@ -1,7 +1,7 @@
 ﻿$ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $runDir = Join-Path (Join-Path $repoRoot '.local') 'run'
-$services = @('luckyh-gateway-service', 'luckyh-order-service', 'luckyh-user-service', 'luckyh-auth-service')
+$services = @('luckyh-gateway-service', 'luckyh-order-service', 'luckyh-account-service', 'luckyh-inventory-service', 'luckyh-user-service', 'luckyh-auth-service')
 
 function Get-ManagedProcess($serviceName, $pidFile) {
     try {

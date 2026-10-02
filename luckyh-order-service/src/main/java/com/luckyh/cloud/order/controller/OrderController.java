@@ -3,6 +3,7 @@ package com.luckyh.cloud.order.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.luckyh.cloud.common.core.domain.Result;
 import com.luckyh.cloud.order.dto.OrderDTO;
+import com.luckyh.cloud.order.dto.PurchaseDTO;
 import com.luckyh.cloud.order.service.OrderService;
 import com.luckyh.cloud.order.vo.OrderVO;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,12 @@ public class OrderController {
             return Result.success("订单创建成功", orderId);
         }
         return Result.error("订单创建失败");
+    }
+
+    /** 创建待支付订单，商品资料由库存服务提供。 */
+    @PostMapping("/purchase")
+    public Result<Long> purchase(@RequestBody @Validated PurchaseDTO purchaseDTO) {
+        return Result.success("购买事务提交成功", orderService.purchase(purchaseDTO));
     }
 
     /**
@@ -79,6 +86,15 @@ public class OrderController {
             return Result.success("订单取消成功");
         }
         return Result.error("订单取消失败");
+    }
+
+    /** 对已支付订单执行全额退款并返还库存。 */
+    @PostMapping("/{id}/refund")
+    public Result<String> refundOrder(@PathVariable Long id) {
+        if (orderService.refundOrder(id)) {
+            return Result.success("订单退款成功");
+        }
+        return Result.error("订单退款失败");
     }
 
     /**

@@ -1,0 +1,46 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: inventory-service
+
+  config:
+    import:
+      - nacos:db-common.yml?refresh=true
+      - nacos:common.yml?refresh=true
+      - nacos:${spring.application.name}.yml?refresh=true
+
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:192.168.10.201:8848}
+        namespace: ${NACOS_NAMESPACE:luckyh-cloud}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:192.168.10.201:8848}
+        namespace: ${NACOS_NAMESPACE:luckyh-cloud}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD}
+
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: default_tx_group
+  service:
+    vgroup-mapping:
+      default_tx_group: default
+  registry:
+    type: file
+  config:
+    type: nacos
+    nacos:
+      server-addr: ${SEATA_NACOS_SERVER_ADDR:${NACOS_SERVER_ADDR:192.168.10.201:8848}}
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD}
+      namespace: ""
+      group: SEATA_GROUP
+      data-id: seataServer.properties

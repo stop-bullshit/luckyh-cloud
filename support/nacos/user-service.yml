@@ -1,9 +1,3 @@
 # 用户服务配置
 # Data ID: user-service.yml
 # Group: DEFAULT_GROUP
-
-# 服务日志配置
-logging:
-  level:
-    com.luckyh.cloud.user: DEBUG
-    io.seata: INFO

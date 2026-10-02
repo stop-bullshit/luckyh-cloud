@@ -3,6 +3,7 @@ package com.luckyh.cloud.order.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.luckyh.cloud.order.dto.OrderDTO;
+import com.luckyh.cloud.order.dto.PurchaseDTO;
 import com.luckyh.cloud.order.entity.OrderInfo;
 import com.luckyh.cloud.order.vo.OrderVO;
 
@@ -18,6 +19,12 @@ public interface OrderService extends IService<OrderInfo> {
      * @return 订单ID
      */
     Long createOrder(OrderDTO orderDTO);
+
+    /** 创建已扣库存及余额的购买订单，三个服务一并提交。 */
+    Long purchase(PurchaseDTO purchaseDTO);
+
+    /** 在三个写入分支完成后主动抛错，验证全局回滚。 */
+    void purchaseWithRollback(PurchaseDTO purchaseDTO);
 
     /**
      * 根据ID获取订单
@@ -52,4 +59,12 @@ public interface OrderService extends IService<OrderInfo> {
      * @return 是否成功
      */
     boolean cancelOrder(Long id);
+
+    /**
+     * 对已支付订单执行余额和库存全额退款。
+     *
+     * @param id 订单ID
+     * @return 是否成功
+     */
+    boolean refundOrder(Long id);
 }
