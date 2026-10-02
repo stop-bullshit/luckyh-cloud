@@ -25,21 +25,21 @@ public class InventoryServiceFallbackFactory implements FallbackFactory<Inventor
             public Result<InventoryProductVO> getProductById(Long productId) {
                 log.error("Feign降级 service=inventory-service method=getProductById productId={} xid={}",
                         productId, RootContext.getXID(), cause);
-                return Result.error(503, "库存服务暂不可用");
+                return FeignFallbackErrors.response(cause, "库存服务");
             }
 
             @Override
             public Result<Void> deduct(InventoryDeductRequest request) {
                 log.error("Feign降级 service=inventory-service method=deduct productId={} quantity={} xid={}",
                         request.getProductId(), request.getQuantity(), RootContext.getXID(), cause);
-                return Result.error(503, "库存服务暂不可用");
+                return FeignFallbackErrors.response(cause, "库存服务");
             }
 
             @Override
             public Result<Void> restore(com.luckyh.cloud.order.dto.InventoryRestoreRequest request) {
                 log.error("Feign降级 service=inventory-service method=restore productId={} quantity={} xid={}",
                         request.getProductId(), request.getQuantity(), RootContext.getXID(), cause);
-                return Result.error(503, "库存服务暂不可用");
+                return FeignFallbackErrors.response(cause, "库存服务");
             }
         };
     }

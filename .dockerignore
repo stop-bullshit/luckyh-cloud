@@ -1,0 +1,5 @@
+**
+!Dockerfile
+!luckyh-*-service/
+!luckyh-*-service/target/
+!luckyh-*-service/target/*.jar

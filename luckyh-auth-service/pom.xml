@@ -104,6 +104,11 @@
         </dependency>
         <dependency>
             <groupId>com.luckyh.cloud</groupId>
+            <artifactId>luckyh-common-web</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.luckyh.cloud</groupId>
             <artifactId>luckyh-common-redis</artifactId>
             <version>1.0.0</version>
         </dependency>

@@ -49,7 +49,8 @@ public class OrderController {
         if (orderVO != null) {
             return Result.success(orderVO);
         }
-        return Result.error("订单不存在");
+        // 逻辑变动: 区分订单不存在和状态冲突等业务失败-20261002-2120-01
+        return Result.error(404, "订单不存在");
     }
 
     /**
@@ -73,7 +74,7 @@ public class OrderController {
         if (paid) {
             return Result.success("订单支付成功");
         }
-        return Result.error("订单支付失败");
+        return Result.error(409, "订单不存在或当前状态不能支付");
     }
 
     /**
@@ -85,7 +86,7 @@ public class OrderController {
         if (cancelled) {
             return Result.success("订单取消成功");
         }
-        return Result.error("订单取消失败");
+        return Result.error(409, "订单不存在或当前状态不能取消");
     }
 
     /** 对已支付订单执行全额退款并返还库存。 */
@@ -94,7 +95,7 @@ public class OrderController {
         if (orderService.refundOrder(id)) {
             return Result.success("订单退款成功");
         }
-        return Result.error("订单退款失败");
+        return Result.error(409, "订单不存在或当前状态不能退款");
     }
 
     /**

@@ -1,6 +1,8 @@
 package com.luckyh.cloud.order.service;
 
 import com.luckyh.cloud.common.core.domain.Result;
+import com.luckyh.cloud.common.core.exception.BusinessException;
+import com.luckyh.cloud.common.core.exception.ServiceException;
 import com.luckyh.cloud.order.dto.PurchaseDTO;
 import com.luckyh.cloud.order.entity.OrderInfo;
 import com.luckyh.cloud.order.exception.PurchaseRollbackException;
@@ -78,16 +80,70 @@ class OrderPurchaseTest {
     @Test
     void inventoryFailureThrowsBeforeAccountCall() {
         when(inventory.deduct(any())).thenReturn(Result.error(409, "库存不足"));
-        assertThrows(IllegalStateException.class, () -> service.purchase(request));
+        BusinessException error = assertThrows(BusinessException.class, () -> service.purchase(request));
+        assertEquals(409, error.getCode());
+        assertEquals("库存扣减失败：库存不足", error.getMessage());
         verify(accounts, never()).debit(any());
     }
 
     @Test
     void accountFailureEscapesTheTransactionBoundary() {
         when(accounts.debit(any())).thenReturn(Result.error(409, "余额不足"));
-        assertThrows(IllegalStateException.class, () -> service.purchase(request));
+        BusinessException error = assertThrows(BusinessException.class, () -> service.purchase(request));
+        assertEquals(409, error.getCode());
+        assertEquals("账户扣款失败：余额不足", error.getMessage());
         verify(service).save(any(OrderInfo.class));
         verify(inventory).deduct(any());
+    }
+
+    @Test
+    void downstreamTimeoutKeeps504AndRollsBack() {
+        when(accounts.debit(any())).thenReturn(Result.error(504, "internal timeout detail"));
+        ServiceException error = assertThrows(ServiceException.class, () -> service.purchase(request));
+        assertEquals(504, error.getCode());
+        assertEquals("账户扣款失败：服务请求超时", error.getMessage());
+        verify(service).save(any(OrderInfo.class));
+    }
+
+    @Test
+    void downstreamInternalFailureKeeps500AndHidesTechnicalMessage() {
+        when(inventory.deduct(any())).thenReturn(Result.error(500, "database connection string"));
+        IllegalStateException error = assertThrows(IllegalStateException.class, () -> service.purchase(request));
+        assertEquals("库存扣减失败：下游服务处理失败", error.getMessage());
+        verify(accounts, never()).debit(any());
+    }
+
+    @Test
+    void unavailableDownstreamKeeps503() {
+        when(inventory.deduct(any())).thenReturn(Result.error(503, "internal address"));
+        ServiceException error = assertThrows(ServiceException.class, () -> service.purchase(request));
+        assertEquals(503, error.getCode());
+        assertEquals("库存扣减失败：服务暂不可用", error.getMessage());
+        verify(accounts, never()).debit(any());
+    }
+
+    @Test
+    void historicalOrderWithoutProductIdHasActionableRefundError() {
+        OrderInfo order = new OrderInfo();
+        order.setStatus(1);
+        doReturn(order).when(service).getById(42L);
+
+        BusinessException error = assertThrows(BusinessException.class, () -> service.refundOrder(42L));
+        assertEquals(409, error.getCode());
+        assertEquals("订单缺少商品ID，无法返还库存", error.getMessage());
+        verifyNoInteractions(accounts, inventory);
+    }
+
+    @Test
+    void historicalOrderWithoutProductIdHasActionablePayError() {
+        OrderInfo order = new OrderInfo();
+        order.setStatus(0);
+        doReturn(order).when(service).getById(42L);
+
+        BusinessException error = assertThrows(BusinessException.class, () -> service.payOrder(42L));
+        assertEquals(409, error.getCode());
+        assertEquals("历史订单缺少商品ID，无法扣减库存和余额", error.getMessage());
+        verifyNoInteractions(accounts, inventory);
     }
 
     @Test

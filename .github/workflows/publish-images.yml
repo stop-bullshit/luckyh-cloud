@@ -1,0 +1,143 @@
+name: Verify and publish service images
+
+on:
+  push:
+    branches: [master, main]
+    tags: ['v*']
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io/stop-bullshit
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Test and package all modules
+        run: mvn --batch-mode --no-transfer-progress verify
+      - name: Upload packaged services
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: service-jars
+          path: |
+            luckyh-gateway-service/target/*.jar
+            luckyh-auth-service/target/*.jar
+            luckyh-user-service/target/*.jar
+            luckyh-order-service/target/*.jar
+            luckyh-inventory-service/target/*.jar
+            luckyh-account-service/target/*.jar
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  build:
+    needs: verify
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: &services
+        service:
+          - luckyh-gateway-service
+          - luckyh-auth-service
+          - luckyh-user-service
+          - luckyh-order-service
+          - luckyh-inventory-service
+          - luckyh-account-service
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: service-jars
+          path: .
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build service image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          load: true
+          build-args: SERVICE=${{ matrix.service }}
+          tags: luckyh-build:${{ matrix.service }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+      - name: Check Java and container permissions
+        env:
+          SERVICE: ${{ matrix.service }}
+        run: |
+          docker run --rm --entrypoint /bin/sh "luckyh-build:$SERVICE" -ec '
+            test "$(id -u)" = "10001"
+            test "$HOME" = "/app"
+            test -r /app/app.jar
+            mkdir -p /app/logs
+            touch /app/logs/.write-check
+            java -XshowSettings:properties -version 2>&1 | grep -F "user.home = /app"
+            java -version
+          '
+
+  publish:
+    if: >-
+      github.event_name != 'pull_request' &&
+      (startsWith(github.ref, 'refs/tags/v') || github.ref_name == github.event.repository.default_branch)
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: *services
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: service-jars
+          path: .
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set image tags
+        id: image
+        env:
+          SERVICE: ${{ matrix.service }}
+          COMMIT_SHA: ${{ github.sha }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          echo "tags<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$REGISTRY/$SERVICE:sha-$COMMIT_SHA" >> "$GITHUB_OUTPUT"
+          if [[ "$REF_TYPE" == "tag" ]]; then
+            if [[ ! "$REF_NAME" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+              echo "Git tag must be a valid Docker image tag." >&2
+              exit 1
+            fi
+            echo "$REGISTRY/$SERVICE:$REF_NAME" >> "$GITHUB_OUTPUT"
+          fi
+          echo "EOF" >> "$GITHUB_OUTPUT"
+      - name: Build and push service image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          build-args: SERVICE=${{ matrix.service }}
+          tags: ${{ steps.image.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}

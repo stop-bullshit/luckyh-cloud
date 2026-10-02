@@ -23,7 +23,7 @@ public class UserServiceFallbackFactory implements FallbackFactory<UserServiceFe
             public Result<com.luckyh.cloud.order.vo.OrderVO.UserInfo> getUserById(Long userId) {
                 log.error("Feign降级 service=auth-service method=getUserById userId={} xid={}",
                         userId, RootContext.getXID(), cause);
-                return Result.error(503, "认证用户服务暂不可用");
+                return FeignFallbackErrors.response(cause, "认证用户服务");
             }
 
             @Override
@@ -31,7 +31,7 @@ public class UserServiceFallbackFactory implements FallbackFactory<UserServiceFe
                     java.util.List<Long> ids) {
                 log.error("Feign降级 service=auth-service method=getUsersByIds userIds={} xid={}",
                         ids, RootContext.getXID(), cause);
-                return Result.error(503, "认证用户服务暂不可用");
+                return FeignFallbackErrors.response(cause, "认证用户服务");
             }
         };
     }

@@ -23,14 +23,14 @@ public class AccountServiceFallbackFactory implements FallbackFactory<AccountSer
             public Result<Void> debit(com.luckyh.cloud.order.dto.AccountDebitRequest request) {
                 log.error("Feign降级 service=account-service method=debit userId={} amount={} xid={}",
                         request.getUserId(), request.getAmount(), RootContext.getXID(), cause);
-                return Result.error(503, "账户服务暂不可用");
+                return FeignFallbackErrors.response(cause, "账户服务");
             }
 
             @Override
             public Result<Void> credit(com.luckyh.cloud.order.dto.AccountCreditRequest request) {
                 log.error("Feign降级 service=account-service method=credit userId={} amount={} xid={}",
                         request.getUserId(), request.getAmount(), RootContext.getXID(), cause);
-                return Result.error(503, "账户服务暂不可用");
+                return FeignFallbackErrors.response(cause, "账户服务");
             }
         };
     }

@@ -14,6 +14,7 @@ Java 17 + Spring Boot 3 + Spring Cloud 的微服务 demo，包含网关、认证
 | [余额管理](support/docs/account-management.md) | 业务用户余额查询和增量充值 |
 | [跨服务事务测试](support/docs/distributed-transactions.md) | 三库提交、全写后回滚、库存 / 余额不足、服务不可用与 SQL 核对 |
 | [K8s Seata 部署](support/k8s/README.md) | 协调器、Secret、固定地址和 Ingress |
+| [GitHub 镜像发布](support/docs/ghcr.md) | Actions 检查、GHCR 镜像版本和 K8s 私有镜像拉取 |
 | [常见问题](support/docs/troubleshooting.md) | Nacos 加载失败、数据库、服务发现、Seata 和端口冲突 |
 
 ## 项目结构
