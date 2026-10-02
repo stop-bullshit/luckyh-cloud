@@ -12,12 +12,11 @@
     <description>Spring Cloud微服务项目</description>
 
     <modules>
-        <module>common</module>
-        <module>common-service</module>
-        <module>gateway-service</module>
-        <module>user-service</module>
-        <module>order-service</module>
-        <module>auth-service</module>
+        <module>luckyh-common</module>
+        <module>luckyh-gateway-service</module>
+        <module>luckyh-user-service</module>
+        <module>luckyh-order-service</module>
+        <module>luckyh-auth-service</module>
     </modules>
 
     <properties>
@@ -197,6 +196,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>${spring-boot.version}</version>
                 <configuration>
+                    <jvmArguments>-Dfile.encoding=UTF-8</jvmArguments>
                     <excludes>
                         <exclude>
                             <groupId>org.springframework.boot</groupId>
@@ -214,6 +214,7 @@
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                     <encoding>UTF-8</encoding>
+                    <parameters>true</parameters>
                 </configuration>
             </plugin>
         </plugins>
