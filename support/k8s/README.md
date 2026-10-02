@@ -1,5 +1,7 @@
 # K8s：Seata 部署
 
+六个后端应用和前端的集群清单、凭据准备与访问方式见 [应用部署](application.md)。
+
 本文介绍当前 demo 的 Seata `2.0.0` 清单。Redis 与 RabbitMQ 集群的部署和访问方式见 [middleware.md](middleware.md)。应用启动脚本不执行数据库初始化，也不创建 Kubernetes 资源。
 
 | 文件 | 用途 |
