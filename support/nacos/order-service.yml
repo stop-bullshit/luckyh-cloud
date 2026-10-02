@@ -1,0 +1,12 @@
+# 订单服务配置文件 - order-service.yml
+# 需要在Nacos配置中心创建
+# Data ID: order-service.yml
+# Group: DEFAULT_GROUP
+
+# 日志配置
+logging:
+  level:
+    com.luckyh.cloud.order: DEBUG
+    com.luckyh.cloud.order.feign: DEBUG
+    feign: DEBUG
+    io.seata: INFO

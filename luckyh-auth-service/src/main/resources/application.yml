@@ -1,0 +1,27 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: auth-service
+
+  config:
+    import:
+      - nacos:db-common.yml?refresh=true
+      - nacos:common.yml?refresh=true
+      - nacos:${spring.application.name}.yml?refresh=true
+
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:192.168.10.201:8848}
+        namespace: ${NACOS_NAMESPACE:luckyh-cloud}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:192.168.10.201:8848}
+        namespace: ${NACOS_NAMESPACE:luckyh-cloud}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD}

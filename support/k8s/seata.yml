@@ -1,0 +1,197 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: seata
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: seata-server-config
+  namespace: seata
+data:
+  application.yml: |
+    server:
+      port: 7091
+    spring:
+      application:
+        name: seata-server
+    logging:
+      config: classpath:logback-spring.xml
+      file:
+        path: /root/logs/seata
+    console:
+      user:
+        username: seata
+        password: ${SEATA_CONSOLE_PASSWORD}
+    seata:
+      config:
+        type: file
+      registry:
+        type: file
+      server:
+        service-port: 8091
+      store:
+        mode: db
+        db:
+          datasource: druid
+          db-type: mysql
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: jdbc:mysql://192.168.10.13:3380/seata?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
+          user: ${DB_USERNAME}
+          password: ${DB_PASSWORD}
+          min-conn: 1
+          max-conn: 5
+          global-table: global_table
+          branch-table: branch_table
+          lock-table: lock_table
+          distributed-lock-table: distributed_lock
+      security:
+        secretKey: ${SEATA_SECRET_KEY}
+        tokenValidityInMilliseconds: 1800000
+        ignore:
+          urls: /,/**/*.css,/**/*.js,/**/*.html,/**/*.map,/**/*.svg,/**/*.png,/**/*.jpeg,/**/*.ico,/api/v1/auth/login,/metadata/v1/**
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seata-server
+  namespace: seata
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: seata-server
+  template:
+    metadata:
+      labels:
+        app: seata-server
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: k8s-node-01
+      containers:
+        - name: seata-server
+          image: docker.io/seataio/seata-server:2.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SEATA_IP
+              value: 192.168.10.203
+            - name: SEATA_PORT
+              value: "8091"
+            - name: STORE_MODE
+              value: db
+            - name: JVM_XMS
+              value: 128m
+            - name: JVM_XMX
+              value: 256m
+            - name: JVM_MetaspaceSize
+              value: 96m
+            - name: JVM_MaxMetaspaceSize
+              value: 160m
+            - name: JVM_MaxDirectMemorySize
+              value: 128m
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: seata-runtime-credentials
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: seata-runtime-credentials
+                  key: DB_PASSWORD
+            - name: SEATA_CONSOLE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: seata-runtime-credentials
+                  key: SEATA_CONSOLE_PASSWORD
+            - name: SEATA_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: seata-runtime-credentials
+                  key: SEATA_SECRET_KEY
+          ports:
+            - name: service
+              containerPort: 8091
+            - name: console
+              containerPort: 7091
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          startupProbe:
+            tcpSocket:
+              port: service
+            periodSeconds: 5
+            failureThreshold: 36
+          readinessProbe:
+            tcpSocket:
+              port: service
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: service
+            periodSeconds: 10
+            failureThreshold: 6
+          volumeMounts:
+            - name: config
+              mountPath: /seata-server/resources/application.yml
+              subPath: application.yml
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: seata-server-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seata-server
+  namespace: seata
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.10.203
+  selector:
+    app: seata-server
+  ports:
+    - name: service
+      port: 8091
+      targetPort: service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seata-console
+  namespace: seata
+spec:
+  type: ClusterIP
+  selector:
+    app: seata-server
+  ports:
+    - name: console
+      port: 7091
+      targetPort: console
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: seata-console
+  namespace: seata
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: seata.home
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: seata-console
+                port:
+                  number: 7091
