@@ -42,7 +42,8 @@ public class UserController {
         if (updated) {
             return Result.success("用户更新成功");
         }
-        return Result.error("用户更新失败");
+        // 逻辑变动: 用户资料不存在或已变化时返回业务状态-20261002-2138-02
+        return Result.error(409, "用户不存在或资料已变化，无法更新");
     }
 
     /**
@@ -54,7 +55,8 @@ public class UserController {
         if (deleted) {
             return Result.success("用户删除成功");
         }
-        return Result.error("用户删除失败");
+        // 逻辑变动: 用户不存在时返回业务状态-20261002-2138-03
+        return Result.error(404, "用户不存在");
     }
 
     /**
@@ -66,7 +68,7 @@ public class UserController {
         if (userVO != null) {
             return Result.success(userVO);
         }
-        return Result.error("用户不存在");
+        return Result.error(404, "用户不存在");
     }
 
     /**

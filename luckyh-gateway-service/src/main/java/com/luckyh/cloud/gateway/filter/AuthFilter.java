@@ -5,12 +5,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.core.codec.DecodingException;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.UnsupportedMediaTypeException;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
@@ -83,9 +86,27 @@ public class AuthFilter implements GlobalFilter, Ordered {
                 .header("Authorization", authHeader)
                 .retrieve()
                 .bodyToMono(JsonNode.class)
-                .map(response -> response.path("code").asInt() == 200)
-                .defaultIfEmpty(false)
-                .onErrorReturn(false);
+                .onErrorMap(error -> error instanceof DecodingException
+                                || error instanceof UnsupportedMediaTypeException,
+                        error -> new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "认证服务响应异常", error))
+                // 逻辑变动: 仅明确的401表示令牌无效，其余异常响应按服务故障处理-20261002-2126-01
+                .map(response -> {
+                    JsonNode codeNode = response.get("code");
+                    if (codeNode == null || !codeNode.isIntegralNumber() || !codeNode.canConvertToInt()) {
+                        throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "认证服务响应异常");
+                    }
+                    int code = codeNode.intValue();
+                    if (code == 200) {
+                        return true;
+                    }
+                    if (code == 401) {
+                        return false;
+                    }
+                    HttpStatus status = code == 504 ? HttpStatus.GATEWAY_TIMEOUT : HttpStatus.SERVICE_UNAVAILABLE;
+                    throw new ResponseStatusException(status, "认证服务响应异常");
+                })
+                .switchIfEmpty(Mono.error(new ResponseStatusException(
+                        HttpStatus.SERVICE_UNAVAILABLE, "认证服务响应为空")));
     }
 
     /**

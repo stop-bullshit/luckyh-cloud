@@ -14,6 +14,8 @@ import com.luckyh.cloud.auth.mapper.SysUserMapper;
 import com.luckyh.cloud.auth.mapper.SysUserRoleMapper;
 import com.luckyh.cloud.auth.service.AuthService;
 import com.luckyh.cloud.auth.util.JwtUtils;
+import com.luckyh.cloud.common.core.exception.BusinessException;
+import com.luckyh.cloud.common.core.exception.ServiceException;
 import com.luckyh.cloud.common.redis.RedisUtils;
 import com.luckyh.cloud.auth.vo.LoginVO;
 import com.luckyh.cloud.auth.vo.ManagedUserVO;
@@ -50,6 +52,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginVO login(LoginDTO loginDTO) {
+        // 逻辑变动: 明确认证业务拒绝与服务故障边界，避免将内部异常回显给前端-20261002-2117-01
         // 查询用户
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysUser::getUsername, loginDTO.getUsername())
@@ -57,12 +60,12 @@ public class AuthServiceImpl implements AuthService {
         SysUser sysUser = sysUserMapper.selectOne(queryWrapper);
 
         if (sysUser == null) {
-            throw new RuntimeException("用户不存在或已被禁用");
+            throw new BusinessException(401, "用户不存在或已被禁用");
         }
 
         // 验证密码
         if (!passwordEncoder.matches(loginDTO.getPassword(), sysUser.getPassword())) {
-            throw new RuntimeException("用户名或密码错误");
+            throw new BusinessException(401, "用户名或密码错误");
         }
 
         // 更新登录时间
@@ -78,14 +81,14 @@ public class AuthServiceImpl implements AuthService {
     public boolean register(RegisterDTO registerDTO) {
         // 验证确认密码
         if (!registerDTO.getPassword().equals(registerDTO.getConfirmPassword())) {
-            throw new RuntimeException("两次输入的密码不一致");
+            throw new BusinessException(400, "两次输入的密码不一致");
         }
 
         // 检查用户名是否存在
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysUser::getUsername, registerDTO.getUsername());
         if (sysUserMapper.selectCount(queryWrapper) > 0) {
-            throw new RuntimeException("用户名已存在");
+            throw new BusinessException(409, "用户名已存在");
         }
 
         // 检查邮箱是否存在
@@ -93,7 +96,7 @@ public class AuthServiceImpl implements AuthService {
             queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(SysUser::getEmail, registerDTO.getEmail());
             if (sysUserMapper.selectCount(queryWrapper) > 0) {
-                throw new RuntimeException("邮箱已被注册");
+                throw new BusinessException(409, "邮箱已被注册");
             }
         }
 
@@ -125,7 +128,7 @@ public class AuthServiceImpl implements AuthService {
     public LoginVO refreshToken(String refreshToken) {
         // 验证刷新令牌
         if (!jwtUtils.validateToken(refreshToken)) {
-            throw new RuntimeException("刷新令牌无效或已过期");
+            throw new BusinessException(401, "刷新令牌无效或已过期");
         }
 
         String username = jwtUtils.getUsernameFromToken(refreshToken);
@@ -134,7 +137,7 @@ public class AuthServiceImpl implements AuthService {
         // 查询用户
         SysUser sysUser = sysUserMapper.selectById(userId);
         if (sysUser == null || !sysUser.getUsername().equals(username)) {
-            throw new RuntimeException("用户不存在");
+            throw new BusinessException(401, "用户不存在");
         }
 
         // 生成新的令牌
@@ -143,37 +146,37 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public boolean logout(String token) {
-        try {
-            // 将令牌加入黑名单
-            String username = jwtUtils.getUsernameFromToken(token);
-            if (StrUtil.isNotBlank(username)) {
-                redisUtils.addTokenToBlacklist(token, jwtUtils.getExpiration());
-                log.info("用户 {} 退出登录成功", username);
-                return true;
-            }
-        } catch (Exception e) {
-            log.error("退出登录失败", e);
+        if (!jwtUtils.validateToken(token)) {
+            throw new BusinessException(401, "令牌无效或已过期");
         }
-        return false;
+        String username = jwtUtils.getUsernameFromToken(token);
+        if (StrUtil.isBlank(username)) {
+            throw new BusinessException(401, "令牌无效或已过期");
+        }
+        if (!redisUtils.addTokenToBlacklist(token, jwtUtils.getExpiration())) {
+            throw new ServiceException(503, "退出登录服务暂不可用");
+        }
+        log.info("用户 {} 退出登录成功", username);
+        return true;
     }
 
     @Override
     public LoginVO.UserInfo validateToken(String token) {
         // 检查令牌是否在黑名单中
         if (redisUtils.isTokenInBlacklist(token)) {
-            throw new RuntimeException("令牌已失效");
+            throw new BusinessException(401, "令牌已失效");
         }
 
         // 验证令牌
         if (!jwtUtils.validateToken(token)) {
-            throw new RuntimeException("令牌无效或已过期");
+            throw new BusinessException(401, "令牌无效或已过期");
         }
 
         Long userId = jwtUtils.getUserIdFromToken(token);
         SysUser sysUser = sysUserMapper.selectById(userId);
 
         if (sysUser == null || sysUser.getStatus() != 1) {
-            throw new RuntimeException("用户不存在或已被禁用");
+            throw new BusinessException(401, "用户不存在或已被禁用");
         }
 
         LoginVO.UserInfo userInfo = new LoginVO.UserInfo();
@@ -208,7 +211,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(rollbackFor = Exception.class)
     public Long createUser(ManagedUserDTO userDTO) {
         if (StrUtil.isBlank(userDTO.getPassword())) {
-            throw new IllegalArgumentException("新建用户时密码不能为空");
+            throw new BusinessException(400, "新建用户时密码不能为空");
         }
         checkUniqueUser(userDTO, null);
         SysUser user = new SysUser();
@@ -264,7 +267,7 @@ public class AuthServiceImpl implements AuthService {
                 .eq(SysUser::getUsername, userDTO.getUsername())
                 .ne(excludedId != null, SysUser::getId, excludedId);
         if (sysUserMapper.selectCount(usernameQuery) > 0) {
-            throw new IllegalArgumentException("用户名已存在");
+            throw new BusinessException(409, "用户名已存在");
         }
         if (StrUtil.isBlank(userDTO.getEmail())) {
             return;
@@ -273,7 +276,7 @@ public class AuthServiceImpl implements AuthService {
                 .eq(SysUser::getEmail, userDTO.getEmail())
                 .ne(excludedId != null, SysUser::getId, excludedId);
         if (sysUserMapper.selectCount(emailQuery) > 0) {
-            throw new IllegalArgumentException("邮箱已被注册");
+            throw new BusinessException(409, "邮箱已被注册");
         }
     }
 

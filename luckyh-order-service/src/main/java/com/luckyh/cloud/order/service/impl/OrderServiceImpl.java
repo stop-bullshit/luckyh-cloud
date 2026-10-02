@@ -9,6 +9,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 // import com.luckyh.cloud.common.mq.message.OrderCreateMessage;
 // import com.luckyh.cloud.common.mq.message.OrderPaymentMessage;
 import com.luckyh.cloud.common.core.domain.Result;
+import com.luckyh.cloud.common.core.exception.BusinessException;
+import com.luckyh.cloud.common.core.exception.ServiceException;
 // import com.luckyh.cloud.common.trace.util.TraceUtils;
 import com.luckyh.cloud.order.dto.OrderDTO;
 import com.luckyh.cloud.order.dto.AccountDebitRequest;
@@ -74,15 +76,16 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
         // 逻辑变动: 订单统一关联登录用户-20261002-1735-01
         // 检查登录用户是否存在
         Result<OrderVO.UserInfo> userResult = userServiceFeign.getUserById(orderDTO.getUserId());
-        if (userResult.getCode() != 200 || userResult.getData() == null) {
-            log.warn("用户查询失败，无法创建订单，用户ID：{}，原因：{}", orderDTO.getUserId(), userResult.getMessage());
-            throw new IllegalStateException("用户查询失败：" + userResult.getMessage());
+        requireSuccess(userResult, "用户查询失败");
+        if (userResult.getData() == null) {
+            throw new ServiceException(503, "用户查询失败：服务返回数据异常");
         }
 
         // 逻辑变动: 订单商品来源统一-20261002-1745-01
         Result<InventoryProductVO> productResult = inventoryServiceFeign.getProductById(orderDTO.getProductId());
-        if (productResult.getCode() != 200 || productResult.getData() == null) {
-            throw new IllegalStateException("商品查询失败：" + productResult.getMessage());
+        requireSuccess(productResult, "商品查询失败");
+        if (productResult.getData() == null) {
+            throw new ServiceException(503, "商品查询失败：服务返回数据异常");
         }
         InventoryProductVO product = productResult.getData();
 
@@ -154,12 +157,14 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
         log.info("开始跨服务购买 xid={} userId={} productId={} quantity={}",
                 xid, purchaseDTO.getUserId(), purchaseDTO.getProductId(), purchaseDTO.getQuantity());
         Result<OrderVO.UserInfo> userResult = userServiceFeign.getUserById(purchaseDTO.getUserId());
-        if (userResult.getCode() != 200 || userResult.getData() == null) {
-            throw new IllegalStateException("用户查询失败：" + userResult.getMessage());
+        requireSuccess(userResult, "用户查询失败");
+        if (userResult.getData() == null) {
+            throw new ServiceException(503, "用户查询失败：服务返回数据异常");
         }
         Result<InventoryProductVO> productResult = inventoryServiceFeign.getProductById(purchaseDTO.getProductId());
-        if (productResult.getCode() != 200 || productResult.getData() == null) {
-            throw new IllegalStateException("商品查询失败：" + productResult.getMessage());
+        requireSuccess(productResult, "商品查询失败");
+        if (productResult.getData() == null) {
+            throw new ServiceException(503, "商品查询失败：服务返回数据异常");
         }
 
         InventoryProductVO product = productResult.getData();
@@ -184,13 +189,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
 
         Result<Void> inventoryResult = inventoryServiceFeign.deduct(
                 new InventoryDeductRequest(purchaseDTO.getProductId(), purchaseDTO.getQuantity()));
-        if (inventoryResult.getCode() != 200) {
-            throw new IllegalStateException("库存扣减失败：" + inventoryResult.getMessage());
-        }
+        requireSuccess(inventoryResult, "库存扣减失败");
         Result<Void> accountResult = accountServiceFeign.debit(new AccountDebitRequest(purchaseDTO.getUserId(), amount));
-        if (accountResult.getCode() != 200) {
-            throw new IllegalStateException("账户扣款失败：" + accountResult.getMessage());
-        }
+        requireSuccess(accountResult, "账户扣款失败");
         log.info("三个购买分支操作完成 xid={} orderId={} userId={} productId={} amount={}",
                 xid, order.getId(), purchaseDTO.getUserId(), purchaseDTO.getProductId(), amount);
         return order.getId();
@@ -277,7 +278,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
         }
 
         if (orderInfo.getProductId() == null) {
-            throw new IllegalStateException("历史订单缺少商品ID，无法扣减库存和余额");
+            throw new BusinessException(409, "历史订单缺少商品ID，无法扣减库存和余额");
         }
 
         String xid = RootContext.getXID();
@@ -299,15 +300,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
 
         Result<Void> inventoryResult = inventoryServiceFeign.deduct(
                 new InventoryDeductRequest(orderInfo.getProductId(), orderInfo.getQuantity()));
-        if (inventoryResult.getCode() != 200) {
-            throw new IllegalStateException("库存扣减失败：" + inventoryResult.getMessage());
-        }
+        requireSuccess(inventoryResult, "库存扣减失败");
 
         Result<Void> accountResult = accountServiceFeign.debit(
                 new AccountDebitRequest(orderInfo.getUserId(), orderInfo.getTotalAmount()));
-        if (accountResult.getCode() != 200) {
-            throw new IllegalStateException("账户扣款失败：" + accountResult.getMessage());
-        }
+        requireSuccess(accountResult, "账户扣款失败");
 
         saveOperationLog(orderInfo, "PAY", 0, 1);
 
@@ -343,8 +340,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
             saveOperationLog(orderInfo, "CANCEL", 0, 2);
             log.info("订单取消成功，订单ID：{}", id);
         } else {
-            log.error("订单取消失败，订单ID：{}", id);
-            throw new RuntimeException("订单取消失败");
+            // 逻辑变动: 并发状态变化复用控制器的409业务提示-20261002-2138-01
+            log.warn("订单状态已变化，无法取消，订单ID：{}", id);
         }
 
         return updated;
@@ -359,7 +356,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
             return false;
         }
         if (orderInfo.getProductId() == null) {
-            throw new IllegalStateException("订单缺少商品ID，无法返还库存");
+            throw new BusinessException(409, "订单缺少商品ID，无法返还库存");
         }
         String xid = RootContext.getXID();
         if (xid == null || xid.isBlank()) {
@@ -379,14 +376,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
 
         Result<Void> accountResult = accountServiceFeign.credit(
                 new AccountCreditRequest(orderInfo.getUserId(), orderInfo.getTotalAmount()));
-        if (accountResult.getCode() != 200) {
-            throw new IllegalStateException("账户退款失败：" + accountResult.getMessage());
-        }
+        requireSuccess(accountResult, "账户退款失败");
         Result<Void> inventoryResult = inventoryServiceFeign.restore(
                 new InventoryRestoreRequest(orderInfo.getProductId(), orderInfo.getQuantity()));
-        if (inventoryResult.getCode() != 200) {
-            throw new IllegalStateException("库存返还失败：" + inventoryResult.getMessage());
-        }
+        requireSuccess(inventoryResult, "库存返还失败");
 
         saveOperationLog(orderInfo, "REFUND", 1, 3);
         log.info("订单退款完成 xid={} orderId={} userId={} productId={} quantity={} amount={}",
@@ -404,6 +397,30 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
         orderVO.setStatusDesc(STATUS_MAP.get(orderInfo.getStatus()));
 
         return orderVO;
+    }
+
+    // 逻辑变动: 订单下游错误区分业务失败与服务故障-20261002-2117-01
+    private static void requireSuccess(Result<?> result, String action) {
+        if (result == null || result.getCode() == null) {
+            throw new ServiceException(503, action + "：服务暂不可用");
+        }
+        int code = result.getCode();
+        if (code == 200) {
+            return;
+        }
+        if (code >= 400 && code < 500) {
+            String message = result.getMessage();
+            throw new BusinessException(code, action + "：" +
+                    (message == null || message.isBlank() ? "请求未完成" : message));
+        }
+        if (code == 504) {
+            throw new ServiceException(504, action + "：服务请求超时");
+        }
+        if (code == 503) {
+            throw new ServiceException(503, action + "：服务暂不可用");
+        }
+        // 逻辑变动: 下游内部错误保持500且不回显技术信息-20261002-2120-01
+        throw new IllegalStateException(action + "：下游服务处理失败");
     }
 
     /** 保存与订单本地写入共同提交或回滚的状态操作流水。 */

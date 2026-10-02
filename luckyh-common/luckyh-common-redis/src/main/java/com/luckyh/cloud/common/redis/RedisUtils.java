@@ -1,6 +1,7 @@
 package com.luckyh.cloud.common.redis;
 
 import com.luckyh.cloud.common.constant.RedisConstants;
+import com.luckyh.cloud.common.core.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -631,7 +632,13 @@ public class RedisUtils {
      */
     public boolean isTokenInBlacklist(String token) {
         String key = RedisConstants.TOKEN_BLACKLIST_PREFIX + token;
-        return hasKey(key);
+        // 逻辑变动: 黑名单读取故障不能当作令牌未失效，否则Redis故障时鉴权会放行-20261002-2117-02
+        try {
+            return Boolean.TRUE.equals(stringRedisTemplate.hasKey(key));
+        } catch (Exception e) {
+            log.error("Token黑名单查询失败", e);
+            throw new ServiceException(503, "认证服务暂不可用");
+        }
     }
 
     /**

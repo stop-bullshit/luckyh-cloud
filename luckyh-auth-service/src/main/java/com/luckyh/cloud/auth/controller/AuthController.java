@@ -11,14 +11,12 @@ import com.luckyh.cloud.auth.vo.ManagedUserVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
  * 认证控制器
  */
-@Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -31,13 +29,8 @@ public class AuthController {
      */
     @PostMapping("/login")
     public R<LoginVO> login(@RequestBody @Validated LoginDTO loginDTO) {
-        try {
-            LoginVO loginVO = authService.login(loginDTO);
-            return R.success("登录成功", loginVO);
-        } catch (Exception e) {
-            log.error("登录失败", e);
-            return R.unauthorized(e.getMessage());
-        }
+        LoginVO loginVO = authService.login(loginDTO);
+        return R.success("登录成功", loginVO);
     }
 
     /**
@@ -45,16 +38,11 @@ public class AuthController {
      */
     @PostMapping("/register")
     public Result<String> register(@RequestBody @Validated RegisterDTO registerDTO) {
-        try {
-            boolean success = authService.register(registerDTO);
-            if (success) {
-                return Result.success("注册成功");
-            }
-            return Result.error("注册失败");
-        } catch (Exception e) {
-            log.error("注册失败", e);
-            return Result.error(e.getMessage());
+        boolean success = authService.register(registerDTO);
+        if (success) {
+            return Result.success("注册成功");
         }
+        return Result.error("注册失败");
     }
 
     /**
@@ -62,13 +50,8 @@ public class AuthController {
      */
     @PostMapping("/refresh")
     public Result<LoginVO> refreshToken(@RequestParam("refreshToken") String refreshToken) {
-        try {
-            LoginVO loginVO = authService.refreshToken(refreshToken);
-            return Result.success("令牌刷新成功", loginVO);
-        } catch (Exception e) {
-            log.error("令牌刷新失败", e);
-            return Result.unauthorized(e.getMessage());
-        }
+        LoginVO loginVO = authService.refreshToken(refreshToken);
+        return Result.success("令牌刷新成功", loginVO);
     }
 
     /**
@@ -76,17 +59,12 @@ public class AuthController {
      */
     @PostMapping("/logout")
     public Result<String> logout(@RequestHeader("Authorization") String authHeader) {
-        try {
-            String token = authHeader.replace("Bearer ", "");
-            boolean success = authService.logout(token);
-            if (success) {
-                return Result.success("退出登录成功");
-            }
-            return Result.error("退出登录失败");
-        } catch (Exception e) {
-            log.error("退出登录失败", e);
-            return Result.error(e.getMessage());
+        String token = authHeader.replace("Bearer ", "");
+        boolean success = authService.logout(token);
+        if (success) {
+            return Result.success("退出登录成功");
         }
+        return Result.error("退出登录失败");
     }
 
     /**
@@ -94,14 +72,9 @@ public class AuthController {
      */
     @GetMapping("/validate")
     public Result<LoginVO.UserInfo> validateToken(@RequestHeader("Authorization") String authHeader) {
-        try {
-            String token = authHeader.replace("Bearer ", "");
-            LoginVO.UserInfo userInfo = authService.validateToken(token);
-            return Result.success(userInfo);
-        } catch (Exception e) {
-            log.error("令牌验证失败", e);
-            return Result.unauthorized(e.getMessage());
-        }
+        String token = authHeader.replace("Bearer ", "");
+        LoginVO.UserInfo userInfo = authService.validateToken(token);
+        return Result.success(userInfo);
     }
 
     /** 查询真实登录用户。 */
@@ -124,7 +97,7 @@ public class AuthController {
     @GetMapping("/users/{id}")
     public Result<ManagedUserVO> getUser(@PathVariable Long id) {
         ManagedUserVO user = authService.getUser(id);
-        return user == null ? Result.error("用户不存在") : Result.success(user);
+        return user == null ? Result.error(404, "用户不存在") : Result.success(user);
     }
 
     /** 新建登录用户。 */
@@ -138,7 +111,7 @@ public class AuthController {
     public Result<String> updateUser(@PathVariable Long id,
                                      @RequestBody @Validated ManagedUserDTO userDTO) {
         return authService.updateUser(id, userDTO)
-                ? Result.success("用户更新成功") : Result.error("用户不存在");
+                ? Result.success("用户更新成功") : Result.error(404, "用户不存在");
     }
 
     /** 删除登录用户，禁止删除当前登录账户。 */
@@ -147,10 +120,10 @@ public class AuthController {
                                      @RequestHeader("Authorization") String authHeader) {
         LoginVO.UserInfo currentUser = authService.validateToken(authHeader.replace("Bearer ", ""));
         if (id.equals(currentUser.getId())) {
-            return Result.error("不能删除当前登录账户");
+            return Result.error(409, "不能删除当前登录账户");
         }
         return authService.deleteUser(id)
-                ? Result.success("用户删除成功") : Result.error("用户不存在");
+                ? Result.success("用户删除成功") : Result.error(404, "用户不存在");
     }
 
     /**
