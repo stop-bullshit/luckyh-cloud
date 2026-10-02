@@ -42,7 +42,7 @@
         <!-- JWT -->
         <jjwt.version>0.12.5</jjwt.version>
         <!-- Spring Security -->
-        <spring-security.version>6.2.1</spring-security.version>
+        <spring-security.version>6.3.8</spring-security.version>
         <!-- SkyWalking -->
         <skywalking.version>8.16.0</skywalking.version>
         <!-- RabbitMQ -->
