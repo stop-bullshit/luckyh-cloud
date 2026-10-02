@@ -1,0 +1,126 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-insight-data
+  namespace: redis
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-insight
+  namespace: redis
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: redis-insight
+  template:
+    metadata:
+      labels:
+        app: redis-insight
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: redis-insight
+          image: docker.io/redis/redisinsight:3.8.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: RI_APP_HOST
+              value: 0.0.0.0
+            - name: RI_APP_PORT
+              value: "5540"
+            - name: RI_ACCEPT_TERMS_AND_CONDITIONS
+              value: "true"
+            - name: RI_REDIS_HOST0
+              value: redis-cluster.redis.svc.cluster.local
+            - name: RI_REDIS_PORT0
+              value: "6379"
+            - name: RI_REDIS_ALIAS0
+              value: Kubernetes Redis Cluster
+            - name: RI_REDIS_USERNAME0
+              value: default
+            - name: RI_REDIS_PASSWORD0
+              valueFrom:
+                secretKeyRef:
+                  name: redis-auth
+                  key: password
+            - name: RI_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: redis-auth
+                  key: insight-encryption-key
+          ports:
+            - name: http
+              containerPort: 5540
+          startupProbe:
+            httpGet:
+              path: /api/health/
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health/
+              port: http
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: redis-insight-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-insight-web
+  namespace: redis
+spec:
+  selector:
+    app: redis-insight
+  ports:
+    - name: http
+      port: 5540
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: redis-insight
+  namespace: redis
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: redis-insight-basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: Redis Insight
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: redis.home
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: redis-insight-web
+                port:
+                  name: http

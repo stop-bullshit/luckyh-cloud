@@ -1,0 +1,247 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: redis
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-headless
+  namespace: redis
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app: redis-cluster
+  ports:
+    - name: redis
+      port: 6379
+    - name: bus
+      port: 16379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster
+  namespace: redis
+spec:
+  selector:
+    app: redis-cluster
+  ports:
+    - name: redis
+      port: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-node-0
+  namespace: redis
+spec:
+  selector:
+    statefulset.kubernetes.io/pod-name: redis-cluster-0
+  ports:
+    - name: redis
+      port: 6379
+    - name: bus
+      port: 16379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-node-1
+  namespace: redis
+spec:
+  selector:
+    statefulset.kubernetes.io/pod-name: redis-cluster-1
+  ports:
+    - name: redis
+      port: 6379
+    - name: bus
+      port: 16379
+    - name: redis-announce
+      port: 6380
+      targetPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-node-2
+  namespace: redis
+spec:
+  selector:
+    statefulset.kubernetes.io/pod-name: redis-cluster-2
+  ports:
+    - name: redis
+      port: 6379
+    - name: bus
+      port: 16379
+    - name: redis-announce
+      port: 6381
+      targetPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-node-3
+  namespace: redis
+spec:
+  selector:
+    statefulset.kubernetes.io/pod-name: redis-cluster-3
+  ports:
+    - name: redis
+      port: 6379
+    - name: bus
+      port: 16379
+    - name: redis-announce
+      port: 6382
+      targetPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-node-4
+  namespace: redis
+spec:
+  selector:
+    statefulset.kubernetes.io/pod-name: redis-cluster-4
+  ports:
+    - name: redis
+      port: 6379
+    - name: bus
+      port: 16379
+    - name: redis-announce
+      port: 6383
+      targetPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-node-5
+  namespace: redis
+spec:
+  selector:
+    statefulset.kubernetes.io/pod-name: redis-cluster-5
+  ports:
+    - name: redis
+      port: 6379
+    - name: bus
+      port: 16379
+    - name: redis-announce
+      port: 6384
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster
+  namespace: redis
+spec:
+  serviceName: redis-headless
+  replicas: 6
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app: redis-cluster
+  template:
+    metadata:
+      labels:
+        app: redis-cluster
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        fsGroup: 999
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: redis-cluster
+      containers:
+        - name: redis
+          image: docker.io/library/redis:8.4.7-alpine
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              ordinal="${POD_NAME##*-}"
+              node_host="redis-node-${ordinal}.redis.svc.cluster.local"
+              announce_port="$((6379 + ordinal))"
+              umask 077
+              cat > /tmp/redis.conf <<EOF
+              bind 0.0.0.0
+              port 6379
+              protected-mode yes
+              dir /data
+              appendonly yes
+              maxmemory 128mb
+              maxmemory-policy noeviction
+              requirepass $REDIS_PASSWORD
+              masterauth $REDIS_PASSWORD
+              cluster-enabled yes
+              cluster-config-file /data/nodes.conf
+              cluster-node-timeout 5000
+              cluster-announce-ip $node_host
+              cluster-announce-port $announce_port
+              cluster-announce-bus-port 16379
+              cluster-announce-hostname $node_host
+              cluster-preferred-endpoint-type ip
+              EOF
+              exec redis-server /tmp/redis.conf
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-auth
+                  key: password
+            - name: REDISCLI_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: redis-auth
+                  key: password
+          ports:
+            - name: redis
+              containerPort: 6379
+            - name: bus
+              containerPort: 16379
+          startupProbe:
+            exec:
+              command: ["/bin/sh", "-ec", "test \"$(redis-cli ping)\" = PONG"]
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            exec:
+              command: ["/bin/sh", "-ec", "test \"$(redis-cli ping)\" = PONG"]
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["/bin/sh", "-ec", "test \"$(redis-cli ping)\" = PONG"]
+            periodSeconds: 15
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 1Gi

@@ -51,7 +51,11 @@ luckyh-cloud/
 | Nacos 客户端 | `192.168.10.201:8848` | 同时需要可达 gRPC `9848` |
 | Nacos 控制台 | `http://nacos.home/` | Ingress，业务命名空间 ID 为 `luckyh-cloud` |
 | MySQL | `192.168.10.209:3306` | 业务库 `luckyh_cloud`、`luckyh_inventory`、`luckyh_account`；协调器库 `seata` |
-| Redis | `192.168.10.13:6379` | 登录令牌黑名单 |
+| Redis 管理页面 | `http://redis.home/` | Redis Insight；Ingress 地址为 `192.168.10.200:80` |
+| Redis API（默认） | `redis-api.home:6379` | `hosts` / DNS → `192.168.10.202`；Redis Cluster 代理单端口，普通 Redis 客户端以 RESP2 连接 |
+| Redis Cluster 直连（可选） | `192.168.10.205:6379–6384` | Cluster 客户端；需在本机映射六个节点域名，见 [部署与连接说明](support/k8s/middleware.md) |
+| RabbitMQ 管理页面 | `http://rabbit.home/` | Ingress 地址为 `192.168.10.200:80` |
+| RabbitMQ AMQP | `rabbit-api.home:5672` | `hosts` / DNS → `192.168.10.204`；当前业务服务尚未接入 |
 | Seata 协调器 | `192.168.10.203:8091` | 固定地址，配置由 Nacos 下发 |
 | Seata 控制台 | `http://seata.home/` | Ingress，后端端口 `7091` |
 

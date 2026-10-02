@@ -1,6 +1,6 @@
 # K8s：Seata 部署
 
-此目录只提供当前 demo 所需的 Seata `2.0.0` 清单。Nacos、MySQL、Redis 使用已有实例。应用启动脚本不执行数据库初始化，也不创建 Kubernetes 资源。
+本文介绍当前 demo 的 Seata `2.0.0` 清单。Redis 与 RabbitMQ 集群的部署和访问方式见 [middleware.md](middleware.md)。应用启动脚本不执行数据库初始化，也不创建 Kubernetes 资源。
 
 | 文件 | 用途 |
 | --- | --- |

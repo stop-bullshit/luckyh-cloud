@@ -1,5 +1,6 @@
 package com.luckyh.cloud.common.redis;
 
+import com.luckyh.cloud.common.constant.RedisConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -618,7 +619,7 @@ public class RedisUtils {
      * @return true成功 false失败
      */
     public boolean addTokenToBlacklist(String token, long expiration) {
-        String key = "blacklist:token:" + token;
+        String key = RedisConstants.TOKEN_BLACKLIST_PREFIX + token;
         return set(key, "1", expiration, TimeUnit.SECONDS);
     }
 
@@ -629,7 +630,7 @@ public class RedisUtils {
      * @return true在黑名单中 false不在黑名单中
      */
     public boolean isTokenInBlacklist(String token) {
-        String key = "blacklist:token:" + token;
+        String key = RedisConstants.TOKEN_BLACKLIST_PREFIX + token;
         return hasKey(key);
     }
 
@@ -639,7 +640,7 @@ public class RedisUtils {
      * @param token 令牌
      */
     public void removeTokenFromBlacklist(String token) {
-        String key = "blacklist:token:" + token;
+        String key = RedisConstants.TOKEN_BLACKLIST_PREFIX + token;
         del(key);
     }
 

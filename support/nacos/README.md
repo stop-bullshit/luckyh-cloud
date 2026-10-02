@@ -8,7 +8,7 @@
 
 | 命名空间 ID | Group | Data ID | 内容 / 使用方 |
 | --- | --- | --- | --- |
-| `luckyh-cloud` | `DEFAULT_GROUP` | [db-common.yml](db-common.yml) | MySQL 公共连接参数、Redis、MyBatis Plus；六个服务均导入 |
+| `luckyh-cloud` | `DEFAULT_GROUP` | [db-common.yml](db-common.yml) | MySQL 公共连接参数、Redis、RabbitMQ、MyBatis Plus；六个服务均导入 |
 | `luckyh-cloud` | `DEFAULT_GROUP` | [common.yml](common.yml) | Spring Boot 默认日志显示、监控端点；六个服务均导入 |
 | `luckyh-cloud` | `DEFAULT_GROUP` | [gateway-service.yml](gateway-service.yml) | 网关路由、CORS、HTTP 超时 |
 | `luckyh-cloud` | `DEFAULT_GROUP` | [auth-service.yml](auth-service.yml) | JWT |
@@ -29,10 +29,22 @@
 | Nacos 控制台 | [http://nacos.home/](http://nacos.home/) |
 | Nacos 客户端 | `192.168.10.201:8848`；客户端还需要可达 `192.168.10.201:9848` |
 | MySQL | `192.168.10.209:3306`；`luckyh_cloud`、`luckyh_inventory`、`luckyh_account` |
-| Redis | `192.168.10.13:6379` |
+| Redis API | `redis-api.home:6379`（`hosts` / DNS → `192.168.10.202`，Redis Cluster 代理单端口） |
+| Redis Cluster 直连（可选） | `192.168.10.205:6379–6384`（六个节点端口） |
+| RabbitMQ AMQP | `rabbit-api.home:5672`（`hosts` / DNS → `192.168.10.204`） |
 | Seata 协调器 | `192.168.10.203:8091` |
 
 `nacos.home` 是控制台的 Ingress 域名，应用的 Nacos 客户端应使用上表的客户端入口。
+
+`db-common.yml` 的 `spring.data.redis.host/port` 默认通过 Envoy 代理 `redis-api.home:6379` 连接 Redis Cluster，普通客户端使用 RESP2，不需要 Redis 节点的 Windows `hosts` 映射。同一份 Nacos 配置还保存逗号分隔的六个直连入口 `luckyh.redis.cluster-nodes`。需要使用 Cluster 客户端时，在对应进程的 PowerShell 中设置：
+
+```powershell
+$env:SPRING_DATA_REDIS_CLUSTER_NODES = '${luckyh.redis.cluster-nodes}'
+```
+
+启动或重启应用后，Spring 从 Nacos 读取节点列表并使用 Cluster 模式；其他进程仍走代理。切回代理时在该进程执行 `Remove-Item Env:SPRING_DATA_REDIS_CLUSTER_NODES`，然后重启应用。Cluster 客户端发现槽位后必须能解析和访问全部六个节点；所需域名、端口及 `hosts` 内容见 [Redis Cluster 直连说明](../k8s/middleware.md#本机访问)。密码仍使用 `REDIS_PASSWORD`。`db-common.yml` 同时提供 `spring.rabbitmq.host/port/username/password`，RabbitMQ 用户名为 `admin`，密码由 `RABBITMQ_PASSWORD` 提供；六个业务服务目前尚未接入 MQ 模块。`redis.home` 与 `rabbit.home` 只用于浏览器管理页面，Ingress 地址为 `192.168.10.200:80`；应用分别连接 `redis-api.home:6379` 和 `rabbit-api.home:5672`。运行应用的每台机器都须配置上述数据域名的 DNS / `hosts`，或覆盖对应的 Spring 主机配置。
+
+2026-10-02 已将 Redis 代理域名、Cluster 节点列表及 RabbitMQ AMQP 配置发布到 Nacos `luckyh-cloud / DEFAULT_GROUP / db-common.yml`，远端回读与本地文件一致。本地认证服务加载了新增属性，默认代理模式的 Redis 与整体健康检查均为 `UP`；此前直连 Cluster 模式也已验证为 `UP`。RabbitMQ 管理 API 认证和本机 AMQP 端口连通均通过。其他已运行的服务应重启后核对实际连接。
 
 ## 环境变量
 
@@ -48,13 +60,16 @@
 | `DB_PORT` | 覆盖 `db-common.yml` 的 MySQL 端口 |
 | `DB_USERNAME` | 覆盖 `db-common.yml` 的应用数据库账号 |
 | `DB_PASSWORD` | 覆盖 `db-common.yml` 的应用数据库密码；未设置时沿用配置内现有演示环境值 |
+| `REDIS_PASSWORD` | Redis Cluster 密码，`db-common.yml` 必需；一键启动脚本未发现该变量时会通过 `ssh k8s-master` 读取 `redis/redis-auth` Secret |
+| `RABBITMQ_PASSWORD` | RabbitMQ 客户端连接时所需密码；一键启动脚本未发现该变量时会通过 `ssh k8s-master` 读取 `rabbitmq/rabbitmq-auth` Secret |
+| `SPRING_DATA_REDIS_CLUSTER_NODES` | 可选；设为 `'${luckyh.redis.cluster-nodes}'` 时从 Nacos 读取直连节点列表，未设置则使用代理 |
 | `JWT_SECRET` | 覆盖认证服务 JWT 密钥；配置保留演示默认值，自定义 HS512 密钥至少 64 字节 |
 | `SPRING_CLOUD_NACOS_DISCOVERY_IP` | 指定服务注册的实际 IPv4 地址 |
 | `SPRING_CLOUD_NACOS_DISCOVERY_NETWORK_INTERFACE` | IDE 启动时可指定 Java 网卡名；按本机实际网卡设置 |
 
 数据库主机、端口、账号、密码和 JDBC 参数只在 `db-common.yml` 维护。公共 URL 使用 `${luckyh.datasource.database:luckyh_cloud}` 选择数据库：认证、用户、订单默认使用 `luckyh_cloud`，库存和账户的服务配置只分别声明 `luckyh_inventory`、`luckyh_account`。切换 MySQL 环境时只发布 `db-common.yml`；只有数据库名称变化时才修改对应服务配置。Seata 服务端使用独立数据库和 Kubernetes Secret，见 [K8s 部署说明](../k8s/README.md)。
 
-一键启动脚本读取当前进程或 Windows 用户环境变量中的 Nacos 凭据；其他覆盖变量需要存在于启动进程环境中。IDEA 继承的是打开 IDE 时的环境，设置 Windows 用户环境变量后需要完全退出并重新打开 IDEA。不要把凭据写入共享 IDE 运行配置。
+一键启动脚本读取当前进程或 Windows 用户环境变量中的 Nacos 凭据及 Redis、RabbitMQ 密码；未设置 `REDIS_PASSWORD` / `RABBITMQ_PASSWORD` 时会通过 `ssh k8s-master` 从对应 Kubernetes Secret 读取到当前进程环境，再传给启动的 Java 进程。直接从 IDEA 启动时，应预先设置所用中间件的密码变量。IDEA 继承的是打开 IDE 时的环境，设置 Windows 用户环境变量后需要完全退出并重新打开 IDEA。不要把凭据写入共享 IDE 运行配置。
 
 完整启动步骤见 [本地开发](../docs/development.md)。Windows / JDK 17 启动时，VM options 需要 `-Dfile.encoding=UTF-8`；它应放在 Java 类名或 `-jar` 之前。否则中文 YAML 解析失败可能被包装为“配置不存在”。
 

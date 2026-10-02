@@ -12,6 +12,9 @@ luckyh:
     username: '${DB_USERNAME:root}'
     password: '${DB_PASSWORD:admin123+.0}'
     parameters: 'useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true'
+  redis:
+    # 逻辑变动: 保留代理默认地址并集中维护直连 Redis Cluster 的节点列表-20261002-2035-01
+    cluster-nodes: 'redis-node-0.redis.svc.cluster.local:6379,redis-node-1.redis.svc.cluster.local:6380,redis-node-2.redis.svc.cluster.local:6381,redis-node-3.redis.svc.cluster.local:6382,redis-node-4.redis.svc.cluster.local:6383,redis-node-5.redis.svc.cluster.local:6384'
 
 spring:
   datasource:
@@ -21,8 +24,16 @@ spring:
     password: '${luckyh.datasource.password}'
   data:
     redis:
-      host: 192.168.10.13
+      # 逻辑变动: 本地服务通过单端口代理连接 Redis Cluster-20261002-1913-02
+      # 逻辑变动: Redis 代理和 RabbitMQ AMQP 使用本地域名-20261002-2015-01
+      host: redis-api.home
       port: 6379
+      password: '${REDIS_PASSWORD}'
+  rabbitmq:
+    host: rabbit-api.home
+    port: 5672
+    username: admin
+    password: '${RABBITMQ_PASSWORD}'
 
 # MyBatis Plus配置
 mybatis-plus:

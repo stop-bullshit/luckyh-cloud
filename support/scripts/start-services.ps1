@@ -74,6 +74,42 @@ foreach ($name in @('NACOS_USERNAME', 'NACOS_PASSWORD')) {
     [Environment]::SetEnvironmentVariable($name, $value, 'Process')
 }
 
+# 逻辑变动: 启动本地服务时从环境变量或集群 Secret 获取 Redis 密码-20261002-1859-01
+$redisPassword = [Environment]::GetEnvironmentVariable('REDIS_PASSWORD', 'Process')
+if ([string]::IsNullOrWhiteSpace($redisPassword)) {
+    $redisPassword = [Environment]::GetEnvironmentVariable('REDIS_PASSWORD', 'User')
+}
+if ([string]::IsNullOrWhiteSpace($redisPassword)) {
+    $encodedPassword = & ssh -o BatchMode=yes -o ConnectTimeout=5 k8s-master "kubectl -n redis get secret redis-auth -o jsonpath='{.data.password}'" 2>$null
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($encodedPassword)) {
+        throw '无法从 k8s-master 读取 Redis 密码；请检查 SSH 连接，或设置 REDIS_PASSWORD 环境变量。'
+    }
+    try {
+        $redisPassword = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(([string]$encodedPassword).Trim()))
+    } catch {
+        throw 'Redis Secret 中的密码编码无效。'
+    }
+}
+[Environment]::SetEnvironmentVariable('REDIS_PASSWORD', $redisPassword, 'Process')
+
+# 逻辑变动: 启动本地服务时从环境变量或集群 Secret 获取 RabbitMQ 密码-20261002-2015-01
+$rabbitmqPassword = [Environment]::GetEnvironmentVariable('RABBITMQ_PASSWORD', 'Process')
+if ([string]::IsNullOrWhiteSpace($rabbitmqPassword)) {
+    $rabbitmqPassword = [Environment]::GetEnvironmentVariable('RABBITMQ_PASSWORD', 'User')
+}
+if ([string]::IsNullOrWhiteSpace($rabbitmqPassword)) {
+    $encodedRabbitmqPassword = & ssh -o BatchMode=yes -o ConnectTimeout=5 k8s-master "kubectl -n rabbitmq get secret rabbitmq-auth -o jsonpath='{.data.password}'" 2>$null
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($encodedRabbitmqPassword)) {
+        throw '无法从 k8s-master 读取 RabbitMQ 密码；请检查 SSH 连接，或设置 RABBITMQ_PASSWORD 环境变量。'
+    }
+    try {
+        $rabbitmqPassword = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(([string]$encodedRabbitmqPassword).Trim()))
+    } catch {
+        throw 'RabbitMQ Secret 中的密码编码无效。'
+    }
+}
+[Environment]::SetEnvironmentVariable('RABBITMQ_PASSWORD', $rabbitmqPassword, 'Process')
+
 $discoveryIp = [Environment]::GetEnvironmentVariable('SPRING_CLOUD_NACOS_DISCOVERY_IP', 'Process')
 if ([string]::IsNullOrWhiteSpace($discoveryIp)) {
     $discoveryIp = [Environment]::GetEnvironmentVariable('SPRING_CLOUD_NACOS_DISCOVERY_IP', 'User')

@@ -2,7 +2,6 @@ package com.luckyh.cloud.gateway.filter;
 
 import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.databind.JsonNode;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -22,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 /**
  * JWT认证过滤器
  */
-@Slf4j
 @Component
 public class AuthFilter implements GlobalFilter, Ordered {
 
@@ -64,11 +62,8 @@ public class AuthFilter implements GlobalFilter, Ordered {
                     if (!isValid) {
                         return handleUnauthorized(exchange, "认证令牌无效");
                     }
+                    // 逻辑变动: 认证通过后保留下游服务异常的原始状态-20261002-2027-01
                     return chain.filter(exchange);
-                })
-                .onErrorResume(throwable -> {
-                    log.error("令牌验证异常", throwable);
-                    return handleUnauthorized(exchange, "认证服务异常");
                 });
     }
 
