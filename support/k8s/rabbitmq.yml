@@ -12,6 +12,11 @@ data:
   rabbitmq.conf: |
     cluster_formation.peer_discovery_backend = k8s
     cluster_partition_handling = pause_minority
+    log.console = true
+    log.file.level = info
+    log.file.rotation.size = 10485760
+    log.file.rotation.count = 5
+    log.file.rotation.compress = true
   enabled_plugins: |
     [rabbitmq_management,rabbitmq_peer_discovery_k8s].
 ---
@@ -53,6 +58,8 @@ spec:
       app: rabbitmq
   template:
     metadata:
+      annotations:
+        luckyh.cloud/logging-policy: "20261002-v1"
       labels:
         app: rabbitmq
     spec:
