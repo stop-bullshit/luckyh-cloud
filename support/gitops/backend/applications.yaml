@@ -35,7 +35,7 @@ spec:
                 name: app-runtime-config
             - secretRef:
                 name: app-runtime
-          image: ghcr.io/stop-bullshit/luckyh-account-service:sha-7a4e0469efb6cf107171606fdd7fd312d432ff75
+          image: ghcr.io/stop-bullshit/luckyh-account-service:sha-cee0a079176f26b54b55896d209fc3afbb42b444
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3
@@ -144,7 +144,7 @@ spec:
                 name: app-runtime-config
             - secretRef:
                 name: app-runtime
-          image: ghcr.io/stop-bullshit/luckyh-auth-service:sha-7a4e0469efb6cf107171606fdd7fd312d432ff75
+          image: ghcr.io/stop-bullshit/luckyh-auth-service:sha-cee0a079176f26b54b55896d209fc3afbb42b444
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3
@@ -262,7 +262,7 @@ spec:
                 name: app-runtime-config
             - secretRef:
                 name: app-runtime
-          image: ghcr.io/stop-bullshit/luckyh-gateway-service:sha-7a4e0469efb6cf107171606fdd7fd312d432ff75
+          image: ghcr.io/stop-bullshit/luckyh-gateway-service:sha-cee0a079176f26b54b55896d209fc3afbb42b444
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3
@@ -371,7 +371,7 @@ spec:
                 name: app-runtime-config
             - secretRef:
                 name: app-runtime
-          image: ghcr.io/stop-bullshit/luckyh-inventory-service:sha-7a4e0469efb6cf107171606fdd7fd312d432ff75
+          image: ghcr.io/stop-bullshit/luckyh-inventory-service:sha-cee0a079176f26b54b55896d209fc3afbb42b444
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3
@@ -491,7 +491,7 @@ spec:
                 name: app-runtime-config
             - secretRef:
                 name: app-runtime
-          image: ghcr.io/stop-bullshit/luckyh-order-service:sha-7a4e0469efb6cf107171606fdd7fd312d432ff75
+          image: ghcr.io/stop-bullshit/luckyh-order-service:sha-cee0a079176f26b54b55896d209fc3afbb42b444
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3
@@ -600,7 +600,7 @@ spec:
                 name: app-runtime-config
             - secretRef:
                 name: app-runtime
-          image: ghcr.io/stop-bullshit/luckyh-user-service:sha-7a4e0469efb6cf107171606fdd7fd312d432ff75
+          image: ghcr.io/stop-bullshit/luckyh-user-service:sha-cee0a079176f26b54b55896d209fc3afbb42b444
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3
