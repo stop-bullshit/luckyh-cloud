@@ -1,0 +1,7 @@
+defaultNamespace: luckyh-cloud
+namespace: luckyh-cloud
+keepResources: true
+helm:
+  takeOwnership: true
+  timeoutSeconds: 600
+  maxHistory: 5

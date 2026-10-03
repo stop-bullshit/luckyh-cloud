@@ -4,8 +4,10 @@ on:
   push:
     branches: [master, main]
     tags: ['v*']
+    paths-ignore: ['support/gitops/**']
   pull_request:
     branches: [master, main]
+    paths-ignore: ['support/gitops/**']
   workflow_dispatch:
 
 permissions:
@@ -19,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Check GitOps image updater
+        run: python3 support/scripts/update-gitops-images.py --self-test
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
@@ -141,3 +145,55 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.service }}
+
+  update-deployment:
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: backend-gitops-${{ github.event.repository.default_branch }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+      - name: Update deployment images on the latest branch
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3; do
+            git fetch origin "$DEFAULT_BRANCH"
+            git checkout -B "$DEFAULT_BRANCH" "origin/$DEFAULT_BRANCH"
+            source_revision=$(git rev-list -1 "$COMMIT_SHA" -- . ':(exclude)support/gitops/**')
+            latest_revision=$(git rev-list -1 HEAD -- . ':(exclude)support/gitops/**')
+            if ! git merge-base --is-ancestor "$COMMIT_SHA" HEAD || [[ "$source_revision" != "$latest_revision" ]]; then
+              echo "A newer code revision exists; this image set will not be deployed."
+              exit 0
+            fi
+            deployment_authors=$(git log --format=%ae "$COMMIT_SHA..HEAD" -- support/gitops/backend/applications.yaml)
+            manual_deployment=$(printf '%s\n' "$deployment_authors" | grep -Fvx '41898282+github-actions[bot]@users.noreply.github.com' || true)
+            if [ -n "$manual_deployment" ]; then
+              echo "A manual deployment change takes priority; this in-flight build will not overwrite it."
+              exit 0
+            fi
+            python3 support/scripts/update-gitops-images.py "$COMMIT_SHA"
+            if git diff --quiet -- support/gitops/backend; then
+              echo "Deployment already uses this image set."
+              exit 0
+            fi
+            git add support/gitops/backend/applications.yaml
+            git commit -m "chore(deploy): update backend images to sha-$COMMIT_SHA"
+            if git push origin "HEAD:$DEFAULT_BRANCH"; then
+              exit 0
+            fi
+          done
+          echo "Could not update deployment manifests after three push attempts." >&2
+          exit 1

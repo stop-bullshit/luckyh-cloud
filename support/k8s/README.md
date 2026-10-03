@@ -2,6 +2,10 @@
 
 六个后端应用和前端的集群清单、凭据准备与访问方式见 [应用部署](application.md)。
 
+代码提交后的 Actions 镜像发布、Fleet 自动部署、版本回滚和新增服务步骤见 [自动发布与部署](gitops.md)。日常发布提交到后端 `master` 或前端 `codex/luckyh-cloud-web`；Fleet 接管后以各仓库的 GitOps 目录为部署来源。
+
+应用与中间件的日志轮转、保留时间、部署验证和回滚见 [日志清理策略](logging.md)。
+
 本文介绍当前 demo 的 Seata `2.0.0` 清单。Redis 与 RabbitMQ 集群的部署和访问方式见 [middleware.md](middleware.md)。应用启动脚本不执行数据库初始化，也不创建 Kubernetes 资源。
 
 | 文件 | 用途 |

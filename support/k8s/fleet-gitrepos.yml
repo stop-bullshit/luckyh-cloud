@@ -1,0 +1,31 @@
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: luckyh-cloud-backend
+  namespace: fleet-local
+spec:
+  repo: https://github.com/stop-bullshit/luckyh-cloud.git
+  branch: master
+  paths:
+    - support/gitops/backend
+  pollingInterval: 30s
+  targets:
+    - clusterSelector:
+        matchLabels:
+          name: local
+---
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: luckyh-cloud-frontend
+  namespace: fleet-local
+spec:
+  repo: https://github.com/stop-bullshit/luckyh-cloud-web.git
+  branch: codex/luckyh-cloud-web
+  paths:
+    - deploy/k8s
+  pollingInterval: 30s
+  targets:
+    - clusterSelector:
+        matchLabels:
+          name: local

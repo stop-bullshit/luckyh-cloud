@@ -2,6 +2,8 @@
 
 部署入口是同目录的 [application.yml](application.yml)。它包含 Kubernetes 命名空间 `luckyh-cloud`、运行 ConfigMap、六个 Java 应用、前端及 Ingress，每个应用初始一个副本。数据库、Nacos、Redis、RabbitMQ 和 Seata 使用已有服务。
 
+日常发布使用 [GitHub Actions 与 Fleet 自动部署](gitops.md)。下面的手工清单和固定版本描述保留为首次初始化记录；Fleet 接管后，以后端 `support/gitops/backend`、前端仓库 `deploy/k8s` 为准，不要重新应用旧清单覆盖线上版本。
+
 ## 镜像与端口
 
 | Deployment / Service | 镜像 | HTTP 端口 | 内存 request / limit |
