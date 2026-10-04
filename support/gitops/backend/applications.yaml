@@ -6,7 +6,7 @@ metadata:
   namespace: luckyh-cloud
 spec:
   progressDeadlineSeconds: 600
-  replicas: 1
+  replicas: 0
   revisionHistoryLimit: 2
   selector:
     matchLabels:
@@ -115,7 +115,7 @@ metadata:
   namespace: luckyh-cloud
 spec:
   progressDeadlineSeconds: 600
-  replicas: 1
+  replicas: 0
   revisionHistoryLimit: 2
   selector:
     matchLabels:
@@ -224,7 +224,7 @@ metadata:
   namespace: luckyh-cloud
 spec:
   progressDeadlineSeconds: 600
-  replicas: 1
+  replicas: 0
   revisionHistoryLimit: 2
   selector:
     matchLabels:
@@ -342,7 +342,7 @@ metadata:
   namespace: luckyh-cloud
 spec:
   progressDeadlineSeconds: 600
-  replicas: 2
+  replicas: 0
   revisionHistoryLimit: 2
   selector:
     matchLabels:
@@ -451,7 +451,7 @@ metadata:
   namespace: luckyh-cloud
 spec:
   progressDeadlineSeconds: 600
-  replicas: 2
+  replicas: 0
   revisionHistoryLimit: 2
   selector:
     matchLabels:
@@ -571,7 +571,7 @@ metadata:
   namespace: luckyh-cloud
 spec:
   progressDeadlineSeconds: 600
-  replicas: 1
+  replicas: 0
   revisionHistoryLimit: 2
   selector:
     matchLabels:
