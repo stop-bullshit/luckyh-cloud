@@ -13,6 +13,7 @@ import com.luckyh.cloud.order.mapper.OrderOperationLogMapper;
 import com.luckyh.cloud.order.service.impl.OrderServiceImpl;
 import com.luckyh.cloud.order.vo.InventoryProductVO;
 import com.luckyh.cloud.order.vo.OrderVO;
+import com.baomidou.mybatisplus.extension.conditions.update.LambdaUpdateChainWrapper;
 import io.seata.core.context.RootContext;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.AfterEach;
@@ -72,7 +73,8 @@ class OrderPurchaseTest {
         sequence.verify(inventory).getProductById(1L);
         sequence.verify(service).save(order.capture());
         sequence.verify(inventory).deduct(argThat(value -> value.getQuantity() == 2));
-        sequence.verify(accounts).debit(argThat(value -> new BigDecimal("199.80").compareTo(value.getAmount()) == 0));
+        sequence.verify(accounts).debit(argThat(value -> new BigDecimal("199.80").compareTo(value.getAmount()) == 0
+                && value.getOrderNo().equals(order.getValue().getOrderNo())));
         assertEquals(1, order.getValue().getStatus());
         assertEquals(new BigDecimal("199.80"), order.getValue().getTotalAmount());
     }
@@ -144,6 +146,41 @@ class OrderPurchaseTest {
         assertEquals(409, error.getCode());
         assertEquals("历史订单缺少商品ID，无法扣减库存和余额", error.getMessage());
         verifyNoInteractions(accounts, inventory);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void paymentAndRefundPassOrderNumberToAccount() {
+        OrderInfo order = new OrderInfo();
+        order.setId(42L);
+        order.setOrderNo("ORDER_42");
+        order.setUserId(1L);
+        order.setProductId(1L);
+        order.setQuantity(2);
+        order.setTotalAmount(new BigDecimal("199.80"));
+        order.setStatus(0);
+        doReturn(order).when(service).getById(42L);
+        LambdaUpdateChainWrapper<OrderInfo> update = mock(LambdaUpdateChainWrapper.class, invocation -> {
+            if ("eq".equals(invocation.getMethod().getName()) || "set".equals(invocation.getMethod().getName())) {
+                return invocation.getMock();
+            }
+            if ("update".equals(invocation.getMethod().getName())) {
+                return true;
+            }
+            return RETURNS_DEFAULTS.answer(invocation);
+        });
+        doReturn(update).when(service).lambdaUpdate();
+
+        assertTrue(service.payOrder(42L));
+        verify(accounts).debit(argThat(value -> "ORDER_42".equals(value.getOrderNo())
+                && new BigDecimal("199.80").compareTo(value.getAmount()) == 0));
+
+        order.setStatus(1);
+        when(accounts.credit(any())).thenReturn(Result.success());
+        when(inventory.restore(any())).thenReturn(Result.success());
+        assertTrue(service.refundOrder(42L));
+        verify(accounts).credit(argThat(value -> "ORDER_42".equals(value.getOrderNo())
+                && new BigDecimal("199.80").compareTo(value.getAmount()) == 0));
     }
 
     @Test

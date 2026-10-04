@@ -10,6 +10,7 @@
 | [04-product-management.sql](04-product-management.sql) | `luckyh_inventory` | 已有库存表升级商品编号自增，保留现有数据 |
 | [05-order-product-id.sql](05-order-product-id.sql) | `luckyh_cloud` | 已有订单表增加商品 ID，供普通订单支付调用库存服务 |
 | [06-order-lifecycle.sql](06-order-lifecycle.sql) | `luckyh_cloud` | 增加支付、取消、退款时间和订单操作流水 |
+| [07-account-balance-log.sql](07-account-balance-log.sql) | `luckyh_account` | 新增余额明细，保留已有余额，不回填历史 |
 
 ## 执行顺序
 
@@ -83,6 +84,17 @@ if ($LASTEXITCODE -ne 0) { throw '订单生命周期升级失败，请先检查�
 
 脚本只执行一次。升级后订单支持待支付、已支付、已取消、已退款四个状态，并记录支付、取消、退款时间以及每次状态变化的 XID。
 
+### 7. 启用余额明细
+
+账户库已有 `account_balance` 后执行 `07`，随后更新账户、订单服务与前端。Java、Go 使用相同的明细表，共用库只执行一份脚本；详情见 [余额明细](../docs/account-balance-log.md)。
+
+```powershell
+mysql --no-defaults --default-character-set=utf8mb4 -h YOUR_DB_HOST -P 3306 -u YOUR_DB_USER -p --batch -e "source D:/project/demo/luckyh-cloud/support/sql/07-account-balance-log.sql"
+if ($LASTEXITCODE -ne 0) { throw '余额明细建表失败，请先检查错误。' }
+```
+
+脚本可以重复执行，不改原表、不回填历史记录。新版写接口依赖该表；建表失败时先处理错误，再启动新版应用。
+
 ## 表与服务
 
 | 数据库 | 表 | 使用方 |
@@ -94,7 +106,7 @@ if ($LASTEXITCODE -ne 0) { throw '订单生命周期升级失败，请先检查�
 | `luckyh_cloud` | `sys_user_role`、`sys_role_permission` | 认证服务的账号、角色、权限关联 |
 | `luckyh_cloud` | `undo_log` | 用户、订单服务的 Seata AT 回滚日志 |
 | `luckyh_inventory` | `inventory`、`undo_log` | 库存服务及其 Seata AT 回滚日志 |
-| `luckyh_account` | `account_balance`、`undo_log` | 账户服务及其 Seata AT 回滚日志 |
+| `luckyh_account` | `account_balance`、`account_balance_log`、`undo_log` | 账户余额、余额明细及 Seata AT 回滚日志 |
 | `seata` | `global_table`、`branch_table`、`lock_table`、`distributed_lock` | Seata Server 的事务与锁信息 |
 
 用户、订单服务共用 `luckyh_cloud`；库存、账户分别使用 `luckyh_inventory`、`luckyh_account`。这三个参与 AT 事务的业务库各有一张 `undo_log`，Seata 协调器的 `seata` 库使用服务端事务表。
@@ -151,6 +163,6 @@ FROM luckyh_account.account_balance
 ORDER BY user_id;
 ```
 
-`luckyh_cloud` 应有 9 张表，库存、账户库各有 2 张表，Seata 库有 4 张表和 4 条默认锁记录。`03` 首次初始化提供 3 个商品、5 个账户。数据库连接参数放在 [Nacos 配置目录](../nacos/README.md)；初始化脚本不创建数据库账号，也不设置应用连接密码。
+`luckyh_cloud` 应有 9 张表，库存库有 2 张表，执行 `07` 后账户库有 3 张表，Seata 库有 4 张表和 4 条默认锁记录。`03` 首次初始化提供 3 个商品、5 个账户。数据库连接参数放在 [Nacos 配置目录](../nacos/README.md)；初始化脚本不创建数据库账号，也不设置应用连接密码。
 
 参考：[MySQL 客户端选项](https://dev.mysql.com/doc/refman/8.0/en/mysql-command-options.html)、[MySQL 8.0.44 客户端源码](https://github.com/mysql/mysql-server/blob/mysql-8.0.44/client/mysql.cc)、[Seata 2.0.0 服务端结构](https://github.com/apache/incubator-seata/blob/v2.0.0/script/server/db/mysql.sql)、[Seata 2.0.0 AT undo_log](https://github.com/apache/incubator-seata/blob/v2.0.0/script/client/at/db/mysql.sql)。

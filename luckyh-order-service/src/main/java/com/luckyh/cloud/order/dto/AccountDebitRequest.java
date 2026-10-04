@@ -21,4 +21,12 @@ public class AccountDebitRequest {
 
     /** 订单实际扣款金额。 */
     private BigDecimal amount;
+
+    /** 可选订单号，供账户余额明细关联订单。 */
+    private String orderNo;
+
+    /** 保留不提供订单号的旧调用方式。 */
+    public AccountDebitRequest(Long userId, BigDecimal amount) {
+        this(userId, amount, null);
+    }
 }

@@ -190,7 +190,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
         Result<Void> inventoryResult = inventoryServiceFeign.deduct(
                 new InventoryDeductRequest(purchaseDTO.getProductId(), purchaseDTO.getQuantity()));
         requireSuccess(inventoryResult, "库存扣减失败");
-        Result<Void> accountResult = accountServiceFeign.debit(new AccountDebitRequest(purchaseDTO.getUserId(), amount));
+        // 逻辑变动: 订单余额明细关联-20261004-1148-02
+        Result<Void> accountResult = accountServiceFeign.debit(
+                new AccountDebitRequest(purchaseDTO.getUserId(), amount, order.getOrderNo()));
         requireSuccess(accountResult, "账户扣款失败");
         log.info("三个购买分支操作完成 xid={} orderId={} userId={} productId={} amount={}",
                 xid, order.getId(), purchaseDTO.getUserId(), purchaseDTO.getProductId(), amount);
@@ -303,7 +305,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
         requireSuccess(inventoryResult, "库存扣减失败");
 
         Result<Void> accountResult = accountServiceFeign.debit(
-                new AccountDebitRequest(orderInfo.getUserId(), orderInfo.getTotalAmount()));
+                new AccountDebitRequest(orderInfo.getUserId(), orderInfo.getTotalAmount(), orderInfo.getOrderNo()));
         requireSuccess(accountResult, "账户扣款失败");
 
         saveOperationLog(orderInfo, "PAY", 0, 1);
@@ -375,7 +377,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderInfo> implem
         }
 
         Result<Void> accountResult = accountServiceFeign.credit(
-                new AccountCreditRequest(orderInfo.getUserId(), orderInfo.getTotalAmount()));
+                new AccountCreditRequest(orderInfo.getUserId(), orderInfo.getTotalAmount(), orderInfo.getOrderNo()));
         requireSuccess(accountResult, "账户退款失败");
         Result<Void> inventoryResult = inventoryServiceFeign.restore(
                 new InventoryRestoreRequest(orderInfo.getProductId(), orderInfo.getQuantity()));

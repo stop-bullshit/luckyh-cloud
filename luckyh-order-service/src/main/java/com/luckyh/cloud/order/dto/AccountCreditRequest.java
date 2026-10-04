@@ -22,4 +22,12 @@ public class AccountCreditRequest {
 
     /** 退款金额。 */
     private BigDecimal amount;
+
+    /** 可选订单号，供账户余额明细关联退款订单。 */
+    private String orderNo;
+
+    /** 保留不提供订单号的旧调用方式。 */
+    public AccountCreditRequest(Long userId, BigDecimal amount) {
+        this(userId, amount, null);
+    }
 }
